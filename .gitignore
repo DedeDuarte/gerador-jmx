@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+
+# HAR files may contain sensitive data (cookies, auth tokens, personal info)
+*.har
+
+# CSV data files with test data (may contain real credentials/personal data)
+*_data.csv
+
+# JMeter test results and logs
+reports/*
+!reports/.gitkeep
