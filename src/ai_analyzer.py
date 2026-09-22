@@ -32,8 +32,12 @@ Regras:
    Onde endpoint_curto é apenas o último segmento significativo do path.
 6. "include": true por padrão. false apenas para requests sem valor de teste \
    (ex: health checks, telemetria interna, analytics).
-7. "csv_candidates": campos de body/query que variam por usuário e devem vir de CSV.
-8. Preencha o objeto raiz "test_data" com o valor REAL observado no HAR para CADA \
+7. "headers": PRESERVE headers críticos. NÃO inclua headers padrão (User-Agent, \
+   sec-ch-ua*, Sec-Fetch-*) pois eles serão adicionados globalmente. Inclua apenas \
+   headers customizados específicos da request (ex: Content-Type, X-Requested-With, \
+   Origin, Referer quando relevante para a request).
+8. "csv_candidates": campos de body/query que variam por usuário e devem vir de CSV.
+9. Preencha o objeto raiz "test_data" com o valor REAL observado no HAR para CADA \
    variável que apareça em "csv_candidates" de qualquer request, ou como variável \
    "órfã" em "variables_used" (sem extractor/dependency que a origine — também acaba \
    indo para o CSV). Formato: {"<variavel>": {"value": "<string>", "sensitive": <bool>}}.
@@ -45,12 +49,12 @@ Regras:
      endereço, cartão de crédito, token, etc.) — apenas para sinalizar que são dados \
      de teste pessoais, sem alterar o valor. "sensitive": false para dados de negócio \
      (productId, cupom, postalCode, shippingMethod, etc.).
-9. "group": rótulo curto (em português, maiúsculas, ex: "LOGIN", "PRODUTOS", "CHECKOUT", \
+10. "group": rótulo curto (em português, maiúsculas, ex: "LOGIN", "PRODUTOS", "CHECKOUT", \
    "CADASTRO") da etapa lógica à qual a request pertence. Requests consecutivas com o \
    mesmo "group" são agrupadas visualmente em um Controller no JMeter. Use o mesmo rótulo \
    para todas as requests de uma mesma etapa e troque de rótulo apenas quando o fluxo \
    mudar de etapa. Se não houver agrupamento relevante, use null.
-10. Analise o fluxo como um todo e preencha o objeto raiz "auth" com o mecanismo de \
+11. Analise o fluxo como um todo e preencha o objeto raiz "auth" com o mecanismo de \
    autenticação detectado:
    - "custom_login": autenticação via request de login (usuário/senha) que gera sessão \
      via cookies e/ou token de sessão dinâmico (ex: "_dynSessConf"). Preencha "login_group" \
@@ -62,11 +66,11 @@ Regras:
    - "basic": HTTP Basic Auth (usuário/senha). Preencha "username_variable" e \
      "password_variable".
    - "none": quando não há autenticação identificável no fluxo.
-11. Se um OBJETIVO for fornecido pelo usuário, use-o para decidir quais requests são \
+12. Se um OBJETIVO for fornecido pelo usuário, use-o para decidir quais requests são \
    relevantes: inclua no array de saída APENAS as requests relacionadas ao objetivo \
    (descarte completamente as demais, não apenas marque include=false). Se nenhum \
    objetivo for fornecido, inclua todas as requests normalmente.
-12. Retorne APENAS um JSON com as chaves "requests" (array), "auth" (objeto) e \
+13. Retorne APENAS um JSON com as chaves "requests" (array), "auth" (objeto) e \
    "test_data" (objeto). Nenhum texto extra.\
 """
 

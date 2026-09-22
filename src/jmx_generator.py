@@ -76,6 +76,10 @@ def _int_prop(name: str, value: int) -> ET.Element:
     return _el("intProp", {"name": name}, str(value))
 
 
+def _long_prop(name: str, value: int) -> ET.Element:
+    return _el("longProp", {"name": name}, str(value))
+
+
 def _hash_tree() -> ET.Element:
     return _el("hashTree")
 
@@ -267,7 +271,13 @@ def _build_csv_config(csv_vars: list[str], csv_filename: str) -> tuple[ET.Elemen
     return csv_config, _hash_tree()
 
 
-def _build_cookie_manager() -> tuple[ET.Element, ET.Element]:
+def _build_cookie_manager(cookies: list[dict] = None) -> tuple[ET.Element, ET.Element]:
+    """
+    Build CookieManager with optional initial cookies from HAR file.
+    
+    Args:
+        cookies: List of cookie dicts with name, value, domain, path, secure, expires
+    """
     cm = _el(
         "CookieManager",
         {
@@ -277,7 +287,50 @@ def _build_cookie_manager() -> tuple[ET.Element, ET.Element]:
             "enabled": "true",
         },
     )
-    cm.append(_el("collectionProp", {"name": "CookieManager.cookies"}))
+    
+    cookies_coll = _el("collectionProp", {"name": "CookieManager.cookies"})
+    
+    # Add initial cookies if provided
+    if cookies:
+        for cookie in cookies:
+            name = cookie.get("name", "")
+            value = cookie.get("value", "")
+            domain = cookie.get("domain", "")
+            path = cookie.get("path", "/")
+            secure = cookie.get("secure", False)
+            expires = cookie.get("expires", 0)
+            
+            if not name:
+                continue
+            
+            cookie_el = _el(
+                "elementProp",
+                {"name": name, "elementType": "Cookie", "testname": name},
+            )
+            cookie_el.append(_string_prop("Cookie.value", value))
+            cookie_el.append(_string_prop("Cookie.domain", domain))
+            cookie_el.append(_string_prop("Cookie.path", path))
+            cookie_el.append(_bool_prop("Cookie.secure", secure))
+            
+            # Convert expires to long timestamp if present
+            # If expires is None or 0, use 0 (session cookie)
+            expires_val = 0
+            if expires and isinstance(expires, (int, float)):
+                expires_val = int(expires * 1000)  # Convert to milliseconds
+            elif expires and isinstance(expires, str):
+                # Try to parse ISO date string if needed
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(expires.replace("Z", "+00:00"))
+                    expires_val = int(dt.timestamp() * 1000)
+                except:
+                    expires_val = 0
+            
+            cookie_el.append(_long_prop("Cookie.expires", expires_val))
+            
+            cookies_coll.append(cookie_el)
+    
+    cm.append(cookies_coll)
     cm.append(_bool_prop("CookieManager.clearEachIteration", False))
     cm.append(_bool_prop("CookieManager.controlledByThreadGroup", False))
     return cm, _hash_tree()
@@ -725,6 +778,9 @@ def generate(
     # "test_data" pode vir solto (uso direto do módulo) ou dentro de
     # "test_data_metadata.variables" (formato salvo por agente.py --analyze).
     test_data: dict = data.get("test_data") or (data.get("test_data_metadata") or {}).get("variables") or {}
+    # Cookies e browser headers extraídos do HAR para bypass de WAF/anti-bot
+    cookies: list[dict] = data.get("cookies", [])
+    browser_headers: dict = data.get("browser_headers", {})
 
     jmeter_test_plan = _el(
         "jmeterTestPlan",
@@ -745,9 +801,18 @@ def generate(
     tg_tree.append(defaults)
     tg_tree.append(defaults_tree)
 
-    cookie_manager, cookie_tree = _build_cookie_manager()
+    cookie_manager, cookie_tree = _build_cookie_manager(cookies)
     tg_tree.append(cookie_manager)
     tg_tree.append(cookie_tree)
+    
+    # Add global browser headers if present (for anti-bot bypass)
+    if browser_headers:
+        browser_hm, browser_hm_tree = _build_header_manager(
+            browser_headers,
+            testname="Browser Headers (Anti-Bot)"
+        )
+        tg_tree.append(browser_hm)
+        tg_tree.append(browser_hm_tree)
 
     auth: dict = data.get("auth") or {"type": "none"}
     auth_type = auth.get("type", "none")

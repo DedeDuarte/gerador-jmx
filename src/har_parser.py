@@ -84,6 +84,97 @@ def parse(
     return entries
 
 
+def _extract_cookies(entries: list[dict], main_host: str) -> list[dict]:
+    """
+    Extract unique cookies from HAR entries for the main domain.
+    
+    Returns a list of cookie dicts with: name, value, domain, path, secure, expires.
+    Deduplicates by (name, domain, path).
+    """
+    cookies_map: dict[tuple[str, str, str], dict] = {}
+    
+    for e in entries:
+        req = e.get("request", {})
+        url = req.get("url", "")
+        parsed_url = urlparse(url)
+        
+        # Only extract cookies for requests to the main host
+        if parsed_url.netloc != main_host:
+            continue
+        
+        # Get cookies from request.cookies array
+        for cookie in req.get("cookies", []):
+            name = cookie.get("name", "")
+            value = cookie.get("value", "")
+            domain = cookie.get("domain", parsed_url.netloc)
+            path = cookie.get("path", "/")
+            secure = cookie.get("secure", parsed_url.scheme == "https")
+            expires = cookie.get("expires")
+            
+            if not name:
+                continue
+            
+            key = (name, domain, path)
+            # Keep the last occurrence (most recent value)
+            cookies_map[key] = {
+                "name": name,
+                "value": value,
+                "domain": domain,
+                "path": path,
+                "secure": secure,
+                "expires": expires,
+            }
+    
+    return list(cookies_map.values())
+
+
+def _extract_browser_headers(entries: list[dict], main_host: str) -> dict:
+    """
+    Extract critical browser headers from the first request to the main host.
+    
+    Returns dict with: User-Agent, sec-ch-ua*, Sec-Fetch-* headers
+    important for anti-bot detection.
+    """
+    browser_headers = {}
+    
+    for e in entries:
+        req = e.get("request", {})
+        url = req.get("url", "")
+        parsed_url = urlparse(url)
+        
+        # Find first request to main host with headers
+        if parsed_url.netloc != main_host:
+            continue
+        
+        headers = req.get("headers", [])
+        if not headers:
+            continue
+        
+        # Extract critical headers
+        for header in headers:
+            name = header.get("name", "")
+            value = header.get("value", "")
+            name_lower = name.lower()
+            
+            if name_lower == "user-agent":
+                browser_headers["User-Agent"] = value
+            elif name_lower == "sec-ch-ua":
+                browser_headers["sec-ch-ua"] = value
+            elif name_lower == "sec-ch-ua-mobile":
+                browser_headers["sec-ch-ua-mobile"] = value
+            elif name_lower == "sec-ch-ua-platform":
+                browser_headers["sec-ch-ua-platform"] = value
+            elif name_lower in ("sec-fetch-dest", "sec-fetch-mode", "sec-fetch-site"):
+                # Store original case for Sec-Fetch-* headers
+                browser_headers[name] = value
+        
+        # If we found at least User-Agent, we have enough
+        if "User-Agent" in browser_headers:
+            break
+    
+    return browser_headers
+
+
 def parse_with_site_info(
     path: str,
     include_third_party: bool = False,
@@ -95,7 +186,8 @@ def parse_with_site_info(
     the --analyze flow).
 
     Returns (entries, site_info) where site_info is
-    {"host": str, "protocol": str, "port": Optional[int]}.
+    {"host": str, "protocol": str, "port": Optional[int],
+     "cookies": list[dict], "browser_headers": dict}.
     """
     data = _load(path)
 
@@ -104,7 +196,9 @@ def parse_with_site_info(
     site_info = _site_info_from_pages(pages)
 
     result = []
-    for e in data["log"].get("entries", []):
+    raw_entries = data["log"].get("entries", [])
+    
+    for e in raw_entries:
         req = e.get("request", {})
         resp = e.get("response", {})
         url = req.get("url", "")
@@ -138,5 +232,9 @@ def parse_with_site_info(
             entry["response"] = resp_body
 
         result.append(entry)
+
+    # Extract cookies and browser headers from raw HAR entries
+    site_info["cookies"] = _extract_cookies(raw_entries, main_host)
+    site_info["browser_headers"] = _extract_browser_headers(raw_entries, main_host)
 
     return result, site_info
