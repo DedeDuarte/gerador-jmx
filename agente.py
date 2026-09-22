@@ -15,13 +15,13 @@ from src import har_parser
 
 def save_goal_log(goal: str) -> None:
     """
-    Salva um log do objetivo/goal especificado pelo usuário em docs/requests_log.txt
+    Salva um log do objetivo/goal especificado pelo usuário em reports/requests_log.txt
     
     Args:
         goal: Objetivo passado via -g/--goal
     """
     os.makedirs("docs", exist_ok=True)
-    log_file = "docs/requests_log.txt"
+    log_file = "reports/requests_log.txt"
     
     # Formato: [dd/mm hh:mm]: "objetivo do usuário"
     now = datetime.now()
