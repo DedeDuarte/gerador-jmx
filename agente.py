@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime
 
 from dotenv import load_dotenv
 
@@ -10,6 +11,29 @@ load_dotenv()
 
 # Módulo responsável por ler e transformar o .har em uma lista de requests limpa
 from src import har_parser
+
+
+def save_goal_log(goal: str) -> None:
+    """
+    Salva um log do objetivo/goal especificado pelo usuário em docs/requests_log.txt
+    
+    Args:
+        goal: Objetivo passado via -g/--goal
+    """
+    os.makedirs("docs", exist_ok=True)
+    log_file = "docs/requests_log.txt"
+    
+    # Formato: [dd/mm hh:mm]: "objetivo do usuário"
+    now = datetime.now()
+    timestamp = now.strftime("%d/%m %H:%M")
+    
+    log_entry = f"[{timestamp}]: {goal}\n"
+    
+    # Append ao arquivo de log
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(log_entry)
+    
+    print(f"Objetivo salvo em {log_file}", file=sys.stderr)
 
 
 def main() -> None:
@@ -90,11 +114,14 @@ def main() -> None:
         requests_result = analysis["requests"]
 
         # Host/protocol/port derivados diretamente do .har (não pedimos pra IA
-        # inferir, pra evitar alucinação).
+        # inferir, pra evitar alucinação). Cookies e browser headers também são
+        # extraídos diretamente do .har para evitar perda de informação crítica.
         result = {
             "host": site_info["host"],
             "protocol": site_info["protocol"],
             "port": site_info["port"],
+            "cookies": site_info.get("cookies", []),
+            "browser_headers": site_info.get("browser_headers", {}),
             "auth": analysis["auth"],
             # Metadados com os valores usados para preencher as variáveis do
             # fluxo (login, senha, email, IDs, etc.), capturados diretamente
@@ -120,6 +147,10 @@ def main() -> None:
             json.dump(result, f, ensure_ascii=False, indent=2)
 
         print(f"Salvo em {args.output} ({len(requests_result)} requests)", file=sys.stderr)
+        
+        # Salva log do objetivo (goal) se foi especificado
+        if args.goal:
+            save_goal_log(args.goal)
 
         if args.jmx:
             jmx_output = args.jmx_output or f"{os.path.splitext(args.output)[0]}.jmx"
