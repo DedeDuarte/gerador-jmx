@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+
+# HAR files and othre tests
+test/*
+!test/.gitkeep
+
+# JMeter test results, CSVs and logs
+reports/*
+!reports/.gitkeep
