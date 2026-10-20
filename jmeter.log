@@ -1,0 +1,70 @@
+2026-10-20 15:55:06,656 INFO o.a.j.u.JMeterUtils: Setting Locale to en
+2026-10-20 15:55:06,689 INFO o.a.j.JMeter: Loading user properties from: C:\apache-jmeter-5.6.3\bin\user.properties
+2026-10-20 15:55:06,690 INFO o.a.j.JMeter: Loading system properties from: C:\apache-jmeter-5.6.3\bin\system.properties
+2026-10-20 15:55:06,690 INFO o.a.j.JMeter: Setting JMeter property: VUs=2
+2026-10-20 15:55:06,690 INFO o.a.j.JMeter: Setting JMeter property: Rampup=1
+2026-10-20 15:55:06,690 INFO o.a.j.JMeter: Setting JMeter property: duration=15
+2026-10-20 15:55:06,690 INFO o.a.j.JMeter: Setting JMeter property: jmeter.save.saveservice.output_format=csv
+2026-10-20 15:55:06,692 INFO o.a.j.JMeter: Copyright (c) 1998-2024 The Apache Software Foundation
+2026-10-20 15:55:06,692 INFO o.a.j.JMeter: Version 5.6.3
+2026-10-20 15:55:06,692 INFO o.a.j.JMeter: java.version=17.0.11
+2026-10-20 15:55:06,692 INFO o.a.j.JMeter: java.vm.name=Java HotSpot(TM) 64-Bit Server VM
+2026-10-20 15:55:06,692 INFO o.a.j.JMeter: os.name=Windows 11
+2026-10-20 15:55:06,692 INFO o.a.j.JMeter: os.arch=amd64
+2026-10-20 15:55:06,692 INFO o.a.j.JMeter: os.version=10.0
+2026-10-20 15:55:06,692 INFO o.a.j.JMeter: file.encoding=Cp1252
+2026-10-20 15:55:06,692 INFO o.a.j.JMeter: java.awt.headless=true
+2026-10-20 15:55:06,692 INFO o.a.j.JMeter: Max memory     =1073741824
+2026-10-20 15:55:06,692 INFO o.a.j.JMeter: Available Processors =8
+2026-10-20 15:55:06,712 INFO o.a.j.JMeter: Default Locale=English (EN)
+2026-10-20 15:55:06,712 INFO o.a.j.JMeter: JMeter  Locale=English
+2026-10-20 15:55:06,712 INFO o.a.j.JMeter: JMeterHome=C:\apache-jmeter-5.6.3
+2026-10-20 15:55:06,712 INFO o.a.j.JMeter: user.dir  =C:\.code\Agente_JMeter
+2026-10-20 15:55:06,712 INFO o.a.j.JMeter: PWD       =C:\.code\Agente_JMeter
+2026-10-20 15:55:06,712 INFO o.a.j.JMeter: IP: 10.10.6.172 Name: LP2492 FullName: LP2492
+2026-10-20 15:55:06,738 INFO o.a.j.s.FileServer: Default base='C:\.code\Agente_JMeter'
+2026-10-20 15:55:06,738 INFO o.a.j.s.FileServer: Set new base='C:\Users\andre.duarte\AppData\Local\Temp\pytest-of-andre.duarte\pytest-13\test_generated_jmx_runs_green0\mini'
+2026-10-20 15:55:06,951 INFO o.a.j.s.SaveService: Testplan (JMX) version: 2.2. Testlog (JTL) version: 2.2
+2026-10-20 15:55:06,982 INFO o.a.j.s.SaveService: Using SaveService properties version 5.0
+2026-10-20 15:55:06,987 INFO o.a.j.s.SaveService: Using SaveService properties file encoding UTF-8
+2026-10-20 15:55:06,991 INFO o.a.j.s.SaveService: Loading file: C:\Users\andre.duarte\AppData\Local\Temp\pytest-of-andre.duarte\pytest-13\test_generated_jmx_runs_green0\mini\mini_login.jmx
+2026-10-20 15:55:07,029 INFO o.a.j.p.h.c.CookieManager: Settings: Delete null: true Check: true Allow variable: true Save: false Prefix: COOKIE_
+2026-10-20 15:55:07,034 INFO o.a.j.p.h.c.CacheManager: Will only cache the following methods: [GET]
+2026-10-20 15:55:07,069 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for text/html is org.apache.jmeter.protocol.http.parser.LagartoBasedHtmlParser
+2026-10-20 15:55:07,069 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for application/xhtml+xml is org.apache.jmeter.protocol.http.parser.LagartoBasedHtmlParser
+2026-10-20 15:55:07,069 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for application/xml is org.apache.jmeter.protocol.http.parser.LagartoBasedHtmlParser
+2026-10-20 15:55:07,069 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for text/xml is org.apache.jmeter.protocol.http.parser.LagartoBasedHtmlParser
+2026-10-20 15:55:07,070 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for text/vnd.wap.wml is org.apache.jmeter.protocol.http.parser.RegexpHTMLParser
+2026-10-20 15:55:07,070 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for text/css is org.apache.jmeter.protocol.http.parser.CssParser
+2026-10-20 15:55:07,118 INFO o.a.j.JMeter: Creating summariser <summary>
+2026-10-20 15:55:07,130 INFO o.a.j.e.StandardJMeterEngine: Running the test!
+2026-10-20 15:55:07,131 INFO o.a.j.s.SampleEvent: List of sample_variables: []
+2026-10-20 15:55:07,131 INFO o.a.j.s.SampleEvent: List of sample_variables: []
+2026-10-20 15:55:07,138 INFO o.a.j.e.u.CompoundVariable: Note: Function class names must contain the string: '.functions.'
+2026-10-20 15:55:07,139 INFO o.a.j.e.u.CompoundVariable: Note: Function class names must not contain the string: '.gui.'
+2026-10-20 15:55:07,277 INFO o.a.j.JMeter: Running test (1792522507277)
+2026-10-20 15:55:07,297 INFO o.a.j.e.StandardJMeterEngine: Starting ThreadGroup: 1 : Grupo de Usuários
+2026-10-20 15:55:07,297 INFO o.a.j.e.StandardJMeterEngine: Starting 2 threads for group Grupo de Usuários.
+2026-10-20 15:55:07,297 INFO o.a.j.e.StandardJMeterEngine: Thread will start next loop on error
+2026-10-20 15:55:07,297 INFO o.a.j.t.ThreadGroup: Starting thread group... number=1 threads=2 ramp-up=1 delayedStart=false
+2026-10-20 15:55:07,307 INFO o.a.j.t.ThreadGroup: Started thread group number 1
+2026-10-20 15:55:07,307 INFO o.a.j.e.StandardJMeterEngine: All thread groups have been started
+2026-10-20 15:55:07,349 INFO o.a.j.t.JMeterThread: Thread started: Grupo de Usuários 1-1
+2026-10-20 15:55:07,352 INFO o.a.j.s.FileServer: Stored: massa.csv
+2026-10-20 15:55:07,844 INFO o.a.j.t.JMeterThread: Thread started: Grupo de Usuários 1-2
+2026-10-20 15:55:08,540 INFO o.a.j.p.h.s.HTTPHCAbstractImpl: Local host = LP2492
+2026-10-20 15:55:08,544 INFO o.a.j.p.h.s.HTTPHC4Impl: HTTP request retry count = 0
+2026-10-20 15:55:08,545 INFO o.a.j.s.SampleResult: Note: Sample TimeStamps are START times
+2026-10-20 15:55:08,545 INFO o.a.j.s.SampleResult: sampleresult.default.encoding is set to UTF-8
+2026-10-20 15:55:08,545 INFO o.a.j.s.SampleResult: sampleresult.useNanoTime=true
+2026-10-20 15:55:08,546 INFO o.a.j.s.SampleResult: sampleresult.nanoThreadSleep=5000
+2026-10-20 15:55:14,610 WARN o.a.j.p.h.s.HTTPSamplerBase: Existing CookieManager HTTP Cookie Manager superseded by HTTP Cookie Manager
+2026-10-20 15:55:16,194 WARN o.a.j.p.h.s.HTTPSamplerBase: Existing CookieManager HTTP Cookie Manager superseded by HTTP Cookie Manager
+2026-10-20 15:55:16,962 INFO o.a.j.u.JsseSSLManager: Using default SSL protocol: TLS
+2026-10-20 15:55:16,962 INFO o.a.j.u.JsseSSLManager: SSL session context: per-thread
+2026-10-20 15:55:20,765 INFO o.a.j.t.JMeterThread: Thread finished: Grupo de Usuários 1-2
+2026-10-20 15:55:22,281 WARN o.a.j.p.h.s.HTTPSamplerBase: Existing CookieManager HTTP Cookie Manager superseded by HTTP Cookie Manager
+2026-10-20 15:55:22,292 INFO o.a.j.t.JMeterThread: Thread finished: Grupo de Usuários 1-1
+2026-10-20 15:55:22,292 INFO o.a.j.e.StandardJMeterEngine: Notifying test listeners of end of test
+2026-10-20 15:55:22,292 INFO o.a.j.s.FileServer: Close: massa.csv
+2026-10-20 15:55:22,294 INFO o.a.j.r.Summariser: summary =     15 in 00:00:15 =    1.0/s Avg:     9 Min:     5 Max:    51 Err:     0 (0.00%)

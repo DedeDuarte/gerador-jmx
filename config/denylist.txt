@@ -1,0 +1,35 @@
+# Domínios descartados no prepare mesmo quando forem do mesmo domínio-base.
+# Um por linha. Casa com o host e com qualquer subdomínio (ex: "clarity.ms" pega "o.clarity.ms").
+google-analytics.com
+analytics.google.com
+googletagmanager.com
+doubleclick.net
+googlesyndication.com
+googleadservices.com
+facebook.com
+facebook.net
+connect.facebook.net
+hotjar.com
+hotjar.io
+clarity.ms
+bing.com
+criteo.com
+criteo.net
+pinterest.com
+tiktok.com
+linkedin.com
+creativecdn.com
+newrelic.com
+nr-data.net
+datadoghq.com
+browser-intake-datadoghq.com
+dynatrace.com
+sentry.io
+segment.io
+segment.com
+visualwebsiteoptimizer.com
+optimizely.com
+algorecs.com
+pmweb.com.br
+onesignal.com
+zendesk.com

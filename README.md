@@ -1,110 +1,105 @@
 # Agente JMeter
 
-Gera planos JMeter (`.jmx`) a partir de um `.har` capturado no navegador, usando IA
-para inferir variáveis, dependências entre requests, extractors e assertions.
+Gera scripts JMeter (`.jmx`) a partir de um `.har` e de uma descrição da jornada.
 
-## Estrutura do projeto
+O **Python** faz tudo que é determinístico:
+- filtrar o HAR;
+- detectar correlações;
+- aplicar a nomenclatura das boas práticas;
+- montar o XML.
+
+O **Claude Code**, pela skill `/gerar-jmeter`, decide a jornada:
+- quais requisições entram e em que ordem;
+- o nome de cada etapa;
+- que valores viram variáveis.
+
+A IA nunca copia dados do HAR. Ela escreve um `plan.json` que referencia as requisições por
+ID, e o Python busca headers, bodies e credenciais reais direto no HAR.
 
 ```
-.
-├── agente.py            # CLI de entrada
-├── requirements.txt
-├── .env                 # DRYVN_API_KEY (não versionado)
-├── src/                 # código-fonte
-│   ├── har_parser.py     # parse do .har -> lista de requests
-│   ├── filters.py         # filtros de terceiros / assets estáticos
-│   ├── ai_analyzer.py     # chamada à IA (DRYVN Gateway) -> JSON JMeter-ready
-│   └── jmx_generator.py   # JSON -> .jmx (samplers, controllers, auth, etc.)
-├── test/                 # fixtures de entrada (.har de exemplo)
-└── reports/              # saídas geradas (.json, .jmx, .csv)
+HAR ──prepare──> catalog.md ──(Claude Code)──> plan.json ──validate──> build ──> .jmx + massa.csv
 ```
 
-## Uso
-
-O `.har` de exemplo fica em `test/renner_login.har` (ajuste o caminho para o seu
-próprio arquivo capturado do navegador).
-
-```cmd
-python agente.py test/renner_login.har --analyze -g "login do usuario e validacao de que o perfil retorna corretamente"
+## Instalação
+```
+python -m pip install -e ".[dev]"
 ```
 
-Por padrão o JSON é salvo em `reports/resultado.json` (`-o/--output` sobrescreve o
-caminho).
+## Uso com o Claude Code
+Abra o repositório no Claude Code e rode:
+```
+/gerar-jmeter caminho/do/arquivo.har "login, buscar produto, adicionar à sacola"
+```
+A jornada pode ser texto livre, endpoints explícitos (`POST /login, GET */products/*`) ou os
+dois. O agente segue o roteiro de [.claude/skills/gerar-jmeter/SKILL.md](.claude/skills/gerar-jmeter/SKILL.md)
+e entrega `work/<projeto>/<nome>.jmx`.
 
-Gerar o JSON **e** o plano JMeter (.jmx) em um único comando (`--jmx` encadeia a
-geração do .jmx logo após salvar o JSON, usando o mesmo nome base com extensão
-`.jmx` — ex: `reports/resultado.json` -> `reports/resultado.jmx`):
+**Grave o HAR com conteúdo.** Use "Preserve log", "Disable cache" e "Save all as HAR with
+content". Sem os corpos das respostas, as correlações que saem delas não são detectadas.
+Mais detalhes em [antigo/docs/HAR_COM_COOKIES.md](antigo/docs/HAR_COM_COOKIES.md).
 
-```cmd
-python agente.py test/renner_login.har --analyze -g "login do usuario e validacao de que o perfil retorna corretamente" --jmx
+## Uso manual (CLI)
+| Comando | O que faz |
+|---|---|
+| `python -m harjmx prepare <har> --out work/<proj> [--host dominio] [--match "POST /login"]` | Filtra o HAR e gera `catalog.md`, `catalog.json` e `correlations.json` |
+| `python -m harjmx show work/<proj> <id>...` | Mostra requisição e resposta completas, **com valores reais** |
+| `python -m harjmx match work/<proj> "POST /login"` | Casa endpoints com IDs |
+| `python -m harjmx validate work/<proj>` | Confere o `plan.json` contra o HAR |
+| `python -m harjmx build work/<proj>` | Valida e gera o `.jmx` (mais o `massa.csv`, se houver variáveis de CSV) |
+
+O formato do `plan.json` está em [src/harjmx/plan/schema.py](src/harjmx/plan/schema.py). Há um
+exemplo completo em [.claude/skills/gerar-jmeter/plan.example.json](.claude/skills/gerar-jmeter/plan.example.json).
+
+## O que o JMX gerado tem
+- **Nomes e agrupamento** conforme `boas-praticas_jmeter.md`:
+  - requisições como `1.0 POST - /api/login - Autenticar Usuário`;
+  - Simple Controller `N - Nome` para etapas com vários passos;
+  - Simple Controller agrupado `3-4 - Nome` para juntar etapas;
+  - extractors `JSON Extractor - var`, com default `var_ERR`.
+- **Esqueleto** igual ao `renner_sap_uy.jmx`:
+  - Thread Group por propriedades (`-JVUs`, `-JRampup`, `-Jduration`);
+  - User Defined Variables com os hosts;
+  - Cookie Manager e Cache Manager;
+  - Header Manager global com os headers comuns e um por sampler só com o que difere;
+  - think time.
+- **Correlações** detectadas automaticamente: JSON Extractor, ou Regex em body ou headers.
+  Opcionalmente, item aleatório de uma lista (`"aleatorio": true`).
+- **Massa de dados** em CSV (login, senha…) com os valores reais do HAR.
+- **Cookies anti-bot** que o navegador já tinha, pré-carregados no Cookie Manager.
+
+Os padrões (thread group, think time, headers descartados) ficam em
+[config/defaults.toml](config/defaults.toml). Os domínios de telemetria descartados ficam em
+[config/denylist.txt](config/denylist.txt).
+
+## Estrutura
+```
+src/harjmx/
+├── cli.py                 # prepare | show | match | validate | build
+├── models.py              # Entry, Body, Response
+├── workspace.py           # pasta work/<proj> e session.json
+├── jsonpath.py            # subconjunto de JSONPath usado pelo JMeter
+├── correlation.py         # valor de resposta X reaparece na requisição Y
+├── har/
+│   ├── loader.py          # HAR → Entry com ID estável
+│   ├── filters.py         # estáticos, terceiros, denylist, preflight
+│   ├── matcher.py         # "POST /login" → IDs
+│   └── catalog.py         # catalog.md (o que a IA lê, sem valores)
+├── plan/
+│   ├── schema.py          # contrato do plan.json
+│   └── validate.py        # erros acionáveis e resolução das variáveis
+└── jmx/
+    ├── hydrate.py         # plano + HAR → samplers com ${var}
+    ├── naming.py          # nomenclatura das boas práticas
+    ├── structure.py       # requisição solta / controller / agrupado
+    ├── builder.py         # renderiza templates e grava o XML
+    └── templates/*.xml.j2 # XML de cada elemento JMeter
 ```
 
-- `--jmx-output <path>` sobrescreve o caminho do `.jmx` gerado (default: mesmo nome
-  de `-o/--output` com extensão `.jmx`).
-- `--threads`, `--loops`, `--ramp-up` são opcionais (default: 1/1/1).
-
-Gerar o plano JMeter (.jmx) separadamente, a partir de um resultado.json já existente:
-
-```cmd
-python agente.py --to-jmx reports/resultado.json -o reports/plano.jmx --threads 5 --loops 3 --ramp-up 10
+## Testes
 ```
-
-- Se houver `csv_candidates` (ex: login/password) ou variáveis sem origem definida,
-  um `.csv` é gerado ao lado do `.jmx` (ex: `plano_data.csv`) com o header **e uma
-  linha de dados** já preenchida a partir de `test_data_metadata` (ver seção
-  abaixo) com os valores **reais capturados do `.har`**, pronta para reproduzir
-  o fluxo exatamente como foi gravado com **1 usuário virtual** (`--threads 1`,
-  default).
-
-## Dados de teste (valores reais do fluxo capturado)
-
-Ao rodar `--analyze`, a IA identifica toda variável que precisa vir de CSV
-(`csv_candidates` + variáveis órfãs em `variables_used`) e preenche, no JSON de
-saída, a seção `test_data_metadata` com o **valor real observado no `.har`**
-para cada uma — ex: se o login foi feito com `andre@mail.com` / `1234`, esses
-são exatamente os valores salvos:
-
-```json
-"test_data_metadata": {
-  "description": "Valores de teste para variaveis do CSV, capturados do .har...",
-  "variables": {
-    "login": { "value": "andre@mail.com", "sensitive": true },
-    "password": { "value": "1234", "sensitive": true },
-    "deviceId": { "value": "a1b2c3d4-...", "sensitive": false }
-  }
-}
+python -m pytest            # unitários + golden do JMX
+python -m pytest -m e2e     # roda o JMX no JMeter real contra um mock local (precisa do JMeter)
 ```
-
-- **`value`**: sempre o dado real usado na captura do fluxo (não é mascarado
-  nem substituído por um placeholder). O objetivo é reproduzir o teste
-  exatamente como foi gravado no navegador.
-- **`sensitive`**: apenas sinaliza que a variável é um dado pessoal (login,
-  senha, email, CPF, CNPJ, telefone, endereço, cartão, token, etc.) — não
-  altera o valor. Complementa a classificação da IA com uma heurística de
-  nomes (`_looks_sensitive` em `src/ai_analyzer.py`) para o caso de ela não
-  marcar corretamente.
-
-Esses mesmos valores são repassados por `src/jmx_generator.py` para a **linha
-de dados do `.csv` final**, na mesma ordem das colunas do header — permitindo
-rodar o `.jmx` gerado imediatamente com **1 usuário** (`--threads 1`) e
-reproduzir exatamente o fluxo lido do `.har`, sem precisar editar o `.csv`
-manualmente antes do primeiro teste.
-
-## Autenticação (auth controller)
-
-A IA analisa o fluxo do `.har` e preenche um bloco `"auth"` no JSON de saída,
-detectando automaticamente o mecanismo usado:
-
-- **`custom_login`**: login via formulário/body (ex: CPF + senha) que gera sessão
-  por cookies e/ou token dinâmico. As requests do grupo (`"group"`) indicado em
-  `auth.login_group` são agrupadas sob um **Once Only Controller**, executando a
-  autenticação apenas uma vez por usuário virtual mesmo com múltiplos loops. Um
-  **HTTP Cookie Manager** é sempre incluído na Thread Group para manter a sessão.
-- **`bearer`**: adiciona um **HTTP Header Manager** global com
-  `Authorization: Bearer ${token}`.
-- **`basic`**: adiciona um **HTTP Authorization Manager** nativo do JMeter.
-- **`none`**: nenhum mecanismo de autenticação identificado.
-
-Requests com o mesmo campo `"group"` (ex: `"LOGIN"`, `"PRODUTOS"`, `"CHECKOUT"`)
-são agrupadas visualmente sob um Controller no `.jmx` gerado, replicando a
-organização por etapas do plano de referência da Renner.
+O teste e2e sobe [tests/mock_server.py](tests/mock_server.py). Esse mock gera CSRF, token e
+IDs novos a cada chamada, então o JMX só passa se as correlações estiverem certas. Para
+atualizar o golden depois de uma mudança intencional, rode `UPDATE_GOLDEN=1 python -m pytest`.

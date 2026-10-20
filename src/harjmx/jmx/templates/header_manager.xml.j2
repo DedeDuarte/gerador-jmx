@@ -1,0 +1,12 @@
+{% macro header_manager(nome, headers) -%}
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="{{ nome }}" enabled="true">
+  <collectionProp name="HeaderManager.headers">
+    {% for k, v in headers %}
+    <elementProp name="" elementType="Header">
+      <stringProp name="Header.name">{{ k }}</stringProp>
+      <stringProp name="Header.value">{{ v }}</stringProp>
+    </elementProp>
+    {% endfor %}
+  </collectionProp>
+</HeaderManager>
+{%- endmacro %}

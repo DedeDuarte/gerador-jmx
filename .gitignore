@@ -1,12 +1,13 @@
 .env
 __pycache__/
 *.pyc
-*.pyo
+*.egg-info/
+.pytest_cache/
 
-# HAR files and othre tests
-test/*
-!test/.gitkeep
+# Saídas geradas por projeto (catálogo, plano, JMX, massa)
+work/*
+!work/.gitkeep
 
-# JMeter test results, CSVs and logs
-reports/*
-!reports/.gitkeep
+# HARs reais contêm credenciais e cookies
+*.har
+!tests/fixtures/*.har
