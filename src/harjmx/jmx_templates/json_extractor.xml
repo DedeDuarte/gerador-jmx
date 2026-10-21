@@ -1,0 +1,6 @@
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="{{ nome }}" enabled="true">
+  <stringProp name="JSONPostProcessor.referenceNames">{{ variavel }}</stringProp>
+  <stringProp name="JSONPostProcessor.jsonPathExprs">{{ expressao }}</stringProp>
+  <stringProp name="JSONPostProcessor.match_numbers">{{ match }}</stringProp>
+  <stringProp name="JSONPostProcessor.defaultValues">{{ variavel }}_ERR</stringProp>
+</JSONPostProcessor>

@@ -142,7 +142,7 @@ src/harjmx/
 ├── catalog.py           # ETAPA 1: catalog.md, o que a IA lê (sem valores)
 ├── plan.py              # ETAPA 2: contrato do plan.json + validação com erros acionáveis
 ├── jmx_builder.py       # ETAPA 3: hidratação (${var}) → nomes → estrutura → XML
-├── jmx_templates.xml.j2 # XML de cada elemento JMeter (edite aqui para mudar o estilo)
+├── jmx_templates/       # um .xml por elemento JMeter (edite aqui para mudar o estilo)
 ├── commands.py          # comandos prepare | show | match | validate | build + pasta do script
 └── jsonpath.py          # utilitário de JSONPath usado pelas etapas
 ```

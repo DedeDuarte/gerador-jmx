@@ -26,7 +26,7 @@ harjmx = "harjmx.commands:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-harjmx = ["jmx_templates.xml.j2"]
+harjmx = ["jmx_templates/*.xml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

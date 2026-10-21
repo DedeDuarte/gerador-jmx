@@ -1,0 +1,4 @@
+<UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Think Time" enabled="true">
+  <stringProp name="ConstantTimer.delay">{{ delay_ms }}</stringProp>
+  <stringProp name="RandomTimer.range">{{ range_ms }}</stringProp>
+</UniformRandomTimer>

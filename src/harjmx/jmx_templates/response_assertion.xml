@@ -1,0 +1,10 @@
+{# Assertion.test_type: 8 = Equals, 16 = Substring. "Asserion.test_strings" é o nome real no JMeter. #}
+<ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="{{ nome }}" enabled="true">
+  <collectionProp name="Asserion.test_strings">
+    <stringProp name="0">{{ esperado }}</stringProp>
+  </collectionProp>
+  <stringProp name="Assertion.custom_message"></stringProp>
+  <stringProp name="Assertion.test_field">{{ campo }}</stringProp>
+  <boolProp name="Assertion.assume_success">false</boolProp>
+  <intProp name="Assertion.test_type">{{ tipo }}</intProp>
+</ResponseAssertion>

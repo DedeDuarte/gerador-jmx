@@ -5,7 +5,7 @@ Plano validado + HAR → texto do .jmx e a linha do CSV de massa. Em quatro pass
      valores dinâmicos trocados por ${variavel}.
   2. Nomes: nomenclatura das boas práticas (C:\\.code\\Caderno\\Boas-praticas_jmeter).
   3. Estrutura: requisição solta, Simple Controller ou Simple Controller agrupado.
-  4. XML: cada elemento é renderizado por uma macro de jmx_templates.xml.j2.
+  4. XML: cada elemento é renderizado pelo seu .xml em jmx_templates/.
 
 `build(plan, variaveis, by_id, config)` → `BuildResult`.
 """
@@ -59,23 +59,23 @@ def build(plan: Plan, variaveis: list[Variavel], by_id: dict[int, Entry], config
 
     tg_children = []
     if csv_vars:
-        tg_children.append(Node(TPL.csv_data_set(plan.csv_arquivo, [v.nome for v in csv_vars])))
+        tg_children.append(Node(render("csv_data_set", arquivo=plan.csv_arquivo, variaveis=[v.nome for v in csv_vars])))
     if global_headers:
-        tg_children.append(Node(TPL.header_manager("HTTP Header Manager - Global", global_headers)))
+        tg_children.append(Node(render("header_manager", nome="HTTP Header Manager - Global", headers=global_headers)))
     tt = config["think_time"]
     if tt["enabled"]:
-        tg_children.append(Node(TPL.think_time(tt["delay_ms"], tt["range_ms"])))
+        tg_children.append(Node(render("think_time", delay_ms=tt["delay_ms"], range_ms=tt["range_ms"])))
     tg_children += _tree_nodes(arrange(plan, samplers), hosts, http)
 
     plan_children = [
-        Node(TPL.user_defined_variables(udv)),
-        Node(TPL.cookie_manager(cookies)),
-        Node(TPL.cache_manager()),
-        Node(TPL.thread_group(config["thread_group"]), tg_children),
+        Node(render("user_defined_variables", variaveis=udv)),
+        Node(render("cookie_manager", cookies=cookies)),
+        Node(render("cache_manager")),
+        Node(render("thread_group", tg=config["thread_group"]), tg_children),
     ]
     if config["listeners"]["view_results_tree"]:
-        plan_children.append(Node(TPL.view_results_tree(False)))
-    root = Node(TPL.test_plan(plan.nome_teste), plan_children)
+        plan_children.append(Node(render("view_results_tree", enabled=False)))
+    root = Node(render("test_plan", nome=plan.nome_teste), plan_children)
 
     lines = ['<?xml version="1.0" encoding="UTF-8"?>',
              '<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">',
@@ -302,9 +302,17 @@ def xml_value(value: Any) -> str:
     return _XML_ESCAPE_RE.sub(lambda m: _XML_ESCAPES[m.group(0)], str(value))
 
 
-TPL = Environment(loader=FileSystemLoader(Path(__file__).parent), autoescape=False, finalize=xml_value,
-                  trim_blocks=True, lstrip_blocks=True,
-                  undefined=StrictUndefined).get_template("jmx_templates.xml.j2").module
+_TEMPLATES = Environment(loader=FileSystemLoader(Path(__file__).parent / "jmx_templates"), autoescape=False,
+                         finalize=xml_value, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
+
+
+def render(element: str, **fields: Any) -> str:
+    """XML de um elemento JMeter: jmx_templates/<element>.xml preenchido com `fields`.
+
+    Todo {{ valor }} passa por xml_value(). Para mudar o estilo do JMX gerado, edite o .xml e
+    rode `UPDATE_GOLDEN=1 python -m pytest`.
+    """
+    return _TEMPLATES.get_template(f"{element}.xml").render(**fields)
 
 
 @dataclass
@@ -328,7 +336,7 @@ def _tree_nodes(items: list[Any], hosts: dict[str, str], http: dict) -> list[Nod
     out = []
     for it in items:
         if isinstance(it, Controller):
-            out.append(Node(TPL.simple_controller(it.nome), _tree_nodes(it.filhos, hosts, http)))
+            out.append(Node(render("simple_controller", nome=it.nome), _tree_nodes(it.filhos, hosts, http)))
         else:
             out.append(_sampler_node(it, hosts, http))
     return out
@@ -338,20 +346,24 @@ def _sampler_node(s: Sampler, hosts: dict[str, str], http: dict) -> Node:
     view = {**s.__dict__, "domain": "${" + hosts[s.host] + "}", "port": s.port or ""}
     children = []
     if s.headers:
-        children.append(Node(TPL.header_manager("HTTP Header Manager", s.headers)))
+        children.append(Node(render("header_manager", nome="HTTP Header Manager", headers=s.headers)))
     for ex in s.extractors:
         nome = extractor_name(ex.tipo, ex.variavel)
         if ex.tipo == "json":
-            children.append(Node(TPL.json_extractor(nome, ex.variavel, ex.expressao, ex.match)))
+            children.append(Node(render("json_extractor", nome=nome, variavel=ex.variavel, expressao=ex.expressao,
+                                        match=ex.match)))
         else:
-            children.append(Node(TPL.regex_extractor(nome, ex.variavel, ex.expressao, ex.campo, ex.match)))
+            children.append(Node(render("regex_extractor", nome=nome, variavel=ex.variavel, expressao=ex.expressao,
+                                        campo=ex.campo, match=ex.match)))
     for a in s.assertions:
         nome = assertion_name(a.tipo, a.esperado)
         if a.tipo == "status":
-            xml = TPL.response_assertion(nome, "Assertion.response_code", 8, a.esperado)
+            xml = render("response_assertion", nome=nome, campo="Assertion.response_code", tipo=8,
+                         esperado=a.esperado)
         elif a.tipo == "texto":
-            xml = TPL.response_assertion(nome, "Assertion.response_data", 16, a.esperado)
+            xml = render("response_assertion", nome=nome, campo="Assertion.response_data", tipo=16,
+                         esperado=a.esperado)
         else:
-            xml = TPL.json_assertion(nome, a.esperado)
+            xml = render("json_assertion", nome=nome, jsonpath=a.esperado)
         children.append(Node(xml))
-    return Node(TPL.http_sampler(view, http), children)
+    return Node(render("http_sampler", s=view, http=http), children)

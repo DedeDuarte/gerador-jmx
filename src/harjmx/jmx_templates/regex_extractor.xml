@@ -1,0 +1,9 @@
+<RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="{{ nome }}" enabled="true">
+  <stringProp name="RegexExtractor.useHeaders">{{ campo == "headers" }}</stringProp>
+  <stringProp name="RegexExtractor.refname">{{ variavel }}</stringProp>
+  <stringProp name="RegexExtractor.regex">{{ expressao }}</stringProp>
+  <stringProp name="RegexExtractor.template">$1$</stringProp>
+  <stringProp name="RegexExtractor.default">{{ variavel }}_ERR</stringProp>
+  <boolProp name="RegexExtractor.default_empty_value">false</boolProp>
+  <stringProp name="RegexExtractor.match_number">{{ match }}</stringProp>
+</RegexExtractor>

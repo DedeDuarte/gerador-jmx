@@ -1,0 +1,41 @@
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="{{ s.nome }}" enabled="true">
+  <stringProp name="TestPlan.comments">HAR #{{ s.har_id }}</stringProp>
+  <stringProp name="HTTPSampler.domain">{{ s.domain }}</stringProp>
+  <stringProp name="HTTPSampler.port">{{ s.port }}</stringProp>
+  <stringProp name="HTTPSampler.protocol">{{ s.protocol }}</stringProp>
+  <stringProp name="HTTPSampler.contentEncoding">{{ http.content_encoding }}</stringProp>
+  <stringProp name="HTTPSampler.path">{{ s.path }}</stringProp>
+  <stringProp name="HTTPSampler.method">{{ s.method }}</stringProp>
+  <boolProp name="HTTPSampler.follow_redirects">{{ s.follow_redirects }}</boolProp>
+  <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+  <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+  <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+{% if s.raw_body is not none %}
+  <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+  <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+    <collectionProp name="Arguments.arguments">
+      <elementProp name="" elementType="HTTPArgument">
+        <boolProp name="HTTPArgument.always_encode">false</boolProp>
+        <stringProp name="Argument.value">{{ s.raw_body }}</stringProp>
+        <stringProp name="Argument.metadata">=</stringProp>
+      </elementProp>
+    </collectionProp>
+  </elementProp>
+{% else %}
+  <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+  <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+    <collectionProp name="Arguments.arguments">
+{% for k, v in s.args %}
+      <elementProp name="{{ k }}" elementType="HTTPArgument">
+        <boolProp name="HTTPArgument.always_encode">true</boolProp>
+        <stringProp name="Argument.value">{{ v }}</stringProp>
+        <stringProp name="Argument.metadata">=</stringProp>
+        <boolProp name="HTTPArgument.use_equals">true</boolProp>
+        <stringProp name="Argument.name">{{ k }}</stringProp>
+      </elementProp>
+{% endfor %}
+    </collectionProp>
+  </elementProp>
+{% endif %}
+  <stringProp name="HTTPSampler.implementation">{{ http.implementation }}</stringProp>
+</HTTPSamplerProxy>

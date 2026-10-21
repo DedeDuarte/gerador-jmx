@@ -1,0 +1,11 @@
+<CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Data Set - {{ arquivo }}" enabled="true">
+  <stringProp name="delimiter">,</stringProp>
+  <stringProp name="fileEncoding">UTF-8</stringProp>
+  <stringProp name="filename">{{ arquivo }}</stringProp>
+  <boolProp name="ignoreFirstLine">true</boolProp>
+  <boolProp name="quotedData">true</boolProp>
+  <boolProp name="recycle">true</boolProp>
+  <stringProp name="shareMode">shareMode.all</stringProp>
+  <boolProp name="stopThread">false</boolProp>
+  <stringProp name="variableNames">{{ variaveis | join(",") }}</stringProp>
+</CSVDataSet>

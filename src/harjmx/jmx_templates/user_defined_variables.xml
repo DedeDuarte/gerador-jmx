@@ -1,0 +1,11 @@
+<Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+  <collectionProp name="Arguments.arguments">
+    {% for nome, valor in variaveis %}
+    <elementProp name="{{ nome }}" elementType="Argument">
+      <stringProp name="Argument.name">{{ nome }}</stringProp>
+      <stringProp name="Argument.value">{{ valor }}</stringProp>
+      <stringProp name="Argument.metadata">=</stringProp>
+    </elementProp>
+    {% endfor %}
+  </collectionProp>
+</Arguments>

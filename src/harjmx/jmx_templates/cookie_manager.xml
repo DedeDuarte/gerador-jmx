@@ -1,0 +1,17 @@
+<CookieManager guiclass="CookiePanel" testclass="CookieManager" testname="HTTP Cookie Manager" enabled="true">
+  <collectionProp name="CookieManager.cookies">
+    {% for c in cookies %}
+    <elementProp name="{{ c.name }}" elementType="Cookie" testname="{{ c.name }}">
+      <stringProp name="Cookie.value">{{ c.value }}</stringProp>
+      <stringProp name="Cookie.domain">{{ c.domain }}</stringProp>
+      <stringProp name="Cookie.path">/</stringProp>
+      <boolProp name="Cookie.secure">{{ c.secure }}</boolProp>
+      <longProp name="Cookie.expires">0</longProp>
+      <boolProp name="Cookie.path_specified">true</boolProp>
+      <boolProp name="Cookie.domain_specified">true</boolProp>
+    </elementProp>
+    {% endfor %}
+  </collectionProp>
+  <boolProp name="CookieManager.clearEachIteration">true</boolProp>
+  <boolProp name="CookieManager.controlledByThreadGroup">false</boolProp>
+</CookieManager>
