@@ -67,7 +67,7 @@ def test_valor_de_when_response_was_not_recorded(tmp_path, mini_plan):
     har_path.write_text(json.dumps(har), encoding="utf-8")
     work = tmp_path / "w"
     assert main(["prepare", str(har_path), "--out", str(work)]) == 0
-    assert "respostas sem corpo gravado" in (work / "catalog.md").read_text(encoding="utf-8")
+    assert "respostas sem corpo gravado" in Workspace(work).catalog_md.read_text(encoding="utf-8")
 
     mini_plan["correlacoes"] = [c for c in mini_plan["correlacoes"] if c["id"] != "C4"]
     extractor = {"variavel": "orderId", "tipo": "json", "expressao": "$.orders[0].orderId"}

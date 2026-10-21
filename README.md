@@ -11,33 +11,33 @@ python -m pip install -e ".[dev]"
 ```
 
 ### 1. Direto pelo terminal
-Cinco comandos, sempre a partir da raiz do repositório. O exemplo usa um HAR de `antigo/test/`.
+Cinco comandos, sempre a partir da raiz do repositório. O exemplo usa um HAR de `jornadas/hars/`.
 
 ```powershell
 # 1. Filtra o HAR e gera o catálogo das requisições
-python -m harjmx prepare antigo\test\renner_login.har --out work\meu_teste
+python -m harjmx prepare jornadas\hars\renner_login.har --out jornadas\scripts\meu_teste
 
 # 2. Leia o catálogo: IDs das requisições, correlações detectadas e avisos
-code work\meu_teste\catalog.md
+code jornadas\scripts\meu_teste\_geracao\catalog.md
 
 #    Para ver uma requisição inteira (as senhas ficam mascaradas):
-python -m harjmx show work\meu_teste 32 --redact
+python -m harjmx show jornadas\scripts\meu_teste 32 --redact
 #    Para achar um endpoint:
-python -m harjmx match work\meu_teste "* *login*"
+python -m harjmx match jornadas\scripts\meu_teste "* *login*"
 
-# 3. Escreva work\meu_teste\plan.json com a jornada
+# 3. Escreva jornadas\scripts\meu_teste\_geracao\plan.json com a jornada
 #    (modelo: .claude\skills\gerar-jmeter\plan.example.json)
 
 # 4. Confere o plano contra o HAR. Os erros dizem o que corrigir
-python -m harjmx validate work\meu_teste
+python -m harjmx validate jornadas\scripts\meu_teste
 
 # 5. Gera o .jmx (e o massa.csv com login/senha)
-python -m harjmx build work\meu_teste
+python -m harjmx build jornadas\scripts\meu_teste
 ```
-O resultado sai em `work\meu_teste\<nome_teste>.jmx`, que você pode abrir no JMeter ou rodar
+O resultado sai em `jornadas\scripts\meu_teste\<nome_teste>.jmx`, que você pode abrir no JMeter ou rodar
 sem interface:
 ```powershell
-C:\apache-jmeter-5.6.3\bin\jmeter.bat -n -t work\meu_teste\<nome_teste>.jmx -l work\meu_teste\smoke.jtl -JVUs=1 -JRampup=1 -Jduration=30
+C:\apache-jmeter-5.6.3\bin\jmeter.bat -n -t jornadas\scripts\meu_teste\<nome_teste>.jmx -l jornadas\scripts\meu_teste\_geracao\smoke.jtl -JVUs=1 -JRampup=1 -Jduration=30
 ```
 
 ### 2. Pelo Claude Code ou Codex
@@ -46,13 +46,13 @@ também fica com ele.
 
 **Claude Code**: abra o repositório e rode a skill:
 ```
-/gerar-jmeter antigo/test/teste.har "login, ver produto, adicionar à sacola"
+/gerar-jmeter jornadas/hars/teste.har "login, ver produto, adicionar à sacola"
 ```
 
 **Codex** (ou outro agente): ele não conhece a skill. Peça que siga o mesmo roteiro:
 ```
 Siga as instruções de .claude/skills/gerar-jmeter/SKILL.md com o HAR
-antigo/test/teste.har e a jornada "login, ver produto, adicionar à sacola".
+jornadas/hars/teste.har e a jornada "login, ver produto, adicionar à sacola".
 ```
 
 A jornada pode ser texto livre, endpoints explícitos (`POST /login, GET */products/*`) ou os
@@ -89,11 +89,11 @@ HAR ──prepare──> catalog.md ──(IA)──> plan.json ──validate�
 ### Comandos
 | Comando | O que faz |
 |---|---|
-| `prepare <har> --out work/<proj> [--host dominio] [--match "POST /login"]` | Filtra o HAR e gera `catalog.md` e `correlations.json` |
-| `show work/<proj> <id>... [--redact]` | Mostra requisição e resposta completas (`--redact` mascara senhas e tokens) |
-| `match work/<proj> "POST /login"` | Casa endpoints com IDs; mostra também as requisições excluídas pelos filtros |
-| `validate work/<proj>` | Confere o `plan.json` contra o HAR |
-| `build work/<proj>` | Valida e gera o `.jmx` (mais o `massa.csv`, se houver variáveis de CSV) |
+| `prepare <har> --out jornadas/scripts/<proj> [--host dominio] [--match "POST /login"]` | Filtra o HAR e gera `catalog.md` e `correlations.json` |
+| `show jornadas/scripts/<proj> <id>... [--redact]` | Mostra requisição e resposta completas (`--redact` mascara senhas e tokens) |
+| `match jornadas/scripts/<proj> "POST /login"` | Casa endpoints com IDs; mostra também as requisições excluídas pelos filtros |
+| `validate jornadas/scripts/<proj>` | Confere o `plan.json` contra o HAR |
+| `build jornadas/scripts/<proj>` | Valida e gera o `.jmx` (mais o `massa.csv`, se houver variáveis de CSV) |
 
 O formato do `plan.json` está em [src/harjmx/plan.py](src/harjmx/plan.py). Há um exemplo
 completo em [.claude/skills/gerar-jmeter/plan.example.json](.claude/skills/gerar-jmeter/plan.example.json).
@@ -120,6 +120,20 @@ Os padrões (thread group, think time, headers descartados) ficam em
 [config/denylist.txt](config/denylist.txt).
 
 ## Estrutura
+
+### Jornadas
+Entradas e saídas ficam em `jornadas/`, fora do git (HARs e scripts têm credenciais e cookies):
+```
+jornadas/
+├── hars/                        # HARs mais usados (opcional: o HAR pode vir de qualquer lugar)
+└── scripts/
+    └── <proj>/                  # uma pasta por script gerado
+        ├── <nome_teste>.jmx     # o que vai para o JMeter
+        ├── massa.csv            # precisa ficar ao lado do .jmx
+        └── _geracao/            # resíduos da geração: session.json, catalog.md, correlations.json, plan.json
+```
+
+### Código
 Um arquivo por etapa do pipeline, lidos nesta ordem:
 ```
 src/harjmx/
@@ -129,7 +143,7 @@ src/harjmx/
 ├── plan.py             # ETAPA 2: contrato do plan.json + validação com erros acionáveis
 ├── jmx.py              # ETAPA 3: hidratação (${var}) → nomes → estrutura → XML
 ├── templates.xml.j2    # XML de cada elemento JMeter (edite aqui para mudar o estilo)
-├── cli.py              # comandos prepare | show | match | validate | build + pasta work/
+├── cli.py              # comandos prepare | show | match | validate | build + pasta do script
 └── jsonpath.py         # utilitário de JSONPath usado pelas etapas
 ```
 

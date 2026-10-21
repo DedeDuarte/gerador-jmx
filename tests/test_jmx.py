@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from harjmx.cli import main
+from harjmx.cli import Workspace, main
 from harjmx.jmx import Controller, arrange, endpoint_name, request_name, xml_value
 from harjmx.plan import Plan
 
@@ -59,7 +59,7 @@ def test_build_matches_golden(mini_work):
 
 
 def test_build_refuses_invalid_plan(mini_work):
-    (mini_work / "plan.json").write_text('{"nome_teste": "x", "etapas": [], "requisicoes": []}',
-                                         encoding="utf-8")
+    Workspace(mini_work).plan_file.write_text('{"nome_teste": "x", "etapas": [], "requisicoes": []}',
+                                              encoding="utf-8")
     assert main(["build", str(mini_work)]) == 1
     assert not (mini_work / "x.jmx").exists()

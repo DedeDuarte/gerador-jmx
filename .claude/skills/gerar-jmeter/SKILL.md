@@ -15,22 +15,24 @@ Rode tudo a partir da raiz do repositório com `python -m harjmx ...`. Se o coma
 por falta do pacote, rode `python -m pip install -e .` uma vez.
 
 ## Entradas
-- **HAR**: caminho do arquivo. Se não vier, pergunte.
+- **HAR**: caminho do arquivo. Se vier só o nome, procure em `jornadas/hars/`. Se não vier, pergunte.
 - **Jornada**: texto livre ("login, buscar produto, adicionar à sacola") e/ou endpoints
   explícitos ("POST /login", "GET */products/*"). Se não vier nenhum dos dois, pergunte.
-- **Projeto**: nome em snake_case para a pasta `work/<proj>`. Derive do nome do HAR.
+- **Projeto**: nome em snake_case para a pasta `jornadas/scripts/<proj>`. Derive do nome do HAR.
+  O `.jmx` e o `massa.csv` ficam na raiz dela; catálogo, correlações, plano e o resto da
+  geração ficam em `jornadas/scripts/<proj>/_geracao/`.
 
 ## Passo a passo
 
 ### 1. Preparar
 ```
-python -m harjmx prepare "<har>" --out work/<proj> [--match "POST /login" ...]
+python -m harjmx prepare "<har>" --out jornadas/scripts/<proj> [--match "POST /login" ...]
 ```
 Passe cada endpoint explícito do usuário em um `--match`. O catálogo vai listar os IDs que
 cada um casou.
 
 ### 2. Ler o catálogo
-Leia `work/<proj>/catalog.md`. Ele mostra estrutura e nomes de chaves, sem valores.
+Leia `jornadas/scripts/<proj>/_geracao/catalog.md`. Ele mostra estrutura e nomes de chaves, sem valores.
 - **Hosts excluídos como terceiros**: se a jornada depende de uma API ou SSO em outro
   domínio (ex: `sso.empresa.com`, `api.empresa.com.br`), rode o prepare de novo com
   `--host <dominio>`.
@@ -61,10 +63,10 @@ Leia `work/<proj>/catalog.md`. Ele mostra estrutura e nomes de chaves, sem valor
 - **Redirects**: o sampler segue o redirect, então não inclua a requisição de destino
   separadamente. Exceção: o destino tem dados que você precisa extrair.
 - Na dúvida sobre o que uma requisição faz, veja os detalhes com
-  `python -m harjmx show work/<proj> <id> [<id>...] --redact`.
+  `python -m harjmx show jornadas/scripts/<proj> <id> [<id>...] --redact`.
   - O `--redact` mascara senhas, tokens, cookies e login/e-mail, e mostra só o tamanho.
   - Tire o `--redact` apenas se precisar do valor real, e não repita esses valores na conversa.
-- Para procurar um endpoint, use `python -m harjmx match work/<proj> "* *cart*"`. O `*` no
+- Para procurar um endpoint, use `python -m harjmx match jornadas/scripts/<proj> "* *cart*"`. O `*` no
   método casa qualquer método. A busca inclui as requisições excluídas pelos filtros e mostra
   o motivo da exclusão.
 - Se um passo pedido pelo usuário não existe no HAR, diga isso e peça uma gravação nova.
@@ -74,7 +76,7 @@ Leia `work/<proj>/catalog.md`. Ele mostra estrutura e nomes de chaves, sem valor
   anterior. Se a origem não faz parte da jornada, não inclua a correlação; prefira um
   extractor manual numa requisição que já está no plano.
 
-### 4. Escrever `work/<proj>/plan.json`
+### 4. Escrever `jornadas/scripts/<proj>/_geracao/plan.json`
 Use [plan.example.json](plan.example.json) como modelo. As regras de nome e agrupamento
 estão em [boas-praticas.md](boas-praticas.md) e o Python as aplica sozinho. Você só fornece
 as peças:
@@ -97,7 +99,7 @@ Não copie headers, bodies nem valores para o plano. O build busca tudo no HAR.
 
 ### 5. Validar até passar
 ```
-python -m harjmx validate work/<proj>
+python -m harjmx validate jornadas/scripts/<proj>
 ```
 Corrija cada `ERRO` no plan.json e rode de novo. As mensagens dizem o que mudar. Leia os
 `AVISO`s:
@@ -106,9 +108,9 @@ Corrija cada `ERRO` no plan.json e rode de novo. As mensagens dizem o que mudar.
 
 ### 6. Gerar
 ```
-python -m harjmx build work/<proj>
+python -m harjmx build jornadas/scripts/<proj>
 ```
-Gera `work/<proj>/<nome_teste>.jmx` e, se houver parâmetros de CSV, o `massa.csv`. **Nunca
+Gera `jornadas/scripts/<proj>/<nome_teste>.jmx` e, se houver parâmetros de CSV, o `massa.csv`. **Nunca
 edite o .jmx à mão**: mude o plano e rode o build de novo.
 
 ### 7. Reportar ao usuário
@@ -125,4 +127,4 @@ edite o .jmx à mão**: mude o plano e rode o build de novo.
       listas montadas a partir de um array da resposta precisam de ajuste manual;
     - o slug do produto em headers `Referer` continua literal.
 - Como rodar um smoke test, contra um ambiente onde isso seja permitido:
-  `jmeter -n -t work/<proj>/<nome>.jmx -l work/<proj>/smoke.jtl -JVUs=1 -JRampup=1 -Jduration=30`
+  `jmeter -n -t jornadas/scripts/<proj>/<nome>.jmx -l jornadas/scripts/<proj>/_geracao/smoke.jtl -JVUs=1 -JRampup=1 -Jduration=30`

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 import mock_server
-from harjmx.cli import main
+from harjmx.cli import Workspace, main
 
 pytestmark = pytest.mark.e2e
 
@@ -27,7 +27,7 @@ def test_generated_jmx_runs_green(mini_work):
     if not jmeter:
         pytest.skip("JMeter não encontrado (defina JMETER_HOME)")
     assert main(["build", str(mini_work)]) == 0
-    jtl = mini_work / "out.jtl"
+    jtl = Workspace(mini_work).gen / "out.jtl"
     server = mock_server.start()
     try:
         subprocess.run([jmeter, "-n", "-t", str(mini_work / "mini_login.jmx"), "-l", str(jtl),

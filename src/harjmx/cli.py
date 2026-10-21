@@ -1,7 +1,7 @@
 """Linha de comando: prepare | show | match | validate | build.
 
 Liga as etapas do pipeline (har → correlation → catalog → plan → jmx). Todos os comandos,
-menos o prepare, recebem a pasta de trabalho work/<proj>, que lembra o HAR e os filtros usados.
+menos o prepare, recebem a pasta do script jornadas/scripts/<proj>, que lembra o HAR e os filtros usados.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from harjmx import catalog, correlation, har, jmx, plan
 from harjmx.correlation import Candidato
 from harjmx.har import Entry
 
-# --- Pasta de trabalho work/<proj> --------------------------------------------------------
+# --- Pasta do script jornadas/scripts/<proj> ----------------------------------------------
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = REPO_ROOT / "config"
@@ -32,21 +32,23 @@ class Session:
 
 
 class Workspace:
-    """Pasta work/<proj>: session.json (HAR + filtros), catálogo, correlações, plano e saídas."""
+    """Pasta jornadas/scripts/<proj>: o .jmx e o CSV na raiz (o que o JMeter usa) e, em
+    _geracao/, os resíduos da geração: session.json (HAR + filtros), catálogo, correlações e plano."""
 
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.main_host = ""
         self.excluded: dict[int, str] = {}
 
-    session_file = property(lambda self: self.path / "session.json")
-    catalog_md = property(lambda self: self.path / "catalog.md")
-    catalog_json = property(lambda self: self.path / "catalog.json")
-    correlations_file = property(lambda self: self.path / "correlations.json")
-    plan_file = property(lambda self: self.path / "plan.json")
+    gen = property(lambda self: self.path / "_geracao")
+    session_file = property(lambda self: self.gen / "session.json")
+    catalog_md = property(lambda self: self.gen / "catalog.md")
+    catalog_json = property(lambda self: self.gen / "catalog.json")
+    correlations_file = property(lambda self: self.gen / "correlations.json")
+    plan_file = property(lambda self: self.gen / "plan.json")
 
     def save_session(self, session: Session) -> None:
-        self.path.mkdir(parents=True, exist_ok=True)
+        self.gen.mkdir(parents=True, exist_ok=True)
         self.session_file.write_text(json.dumps(asdict(session), indent=2, ensure_ascii=False),
                                      encoding="utf-8")
 
@@ -116,14 +118,14 @@ def _match_lines(entries, excluded: dict[int, str], specs: list[str]) -> str:
 
 
 def cmd_match(args) -> int:
-    ws = Workspace(args.work)
+    ws = Workspace(args.script)
     all_entries, _ = ws.load()
     print(_match_lines(all_entries, ws.excluded, args.specs))
     return 0
 
 
 def cmd_show(args) -> int:
-    ws = Workspace(args.work)
+    ws = Workspace(args.script)
     all_entries, _ = ws.load()
     by_id = {e.id: e for e in all_entries}
     for i in args.ids:
@@ -194,14 +196,14 @@ def _validated(ws: Workspace, plan_path: Path):
 
 
 def cmd_validate(args) -> int:
-    ws = Workspace(args.work)
+    ws = Workspace(args.script)
     res, _ = _validated(ws, Path(args.plan) if args.plan else ws.plan_file)
     print(res.report())
     return 0 if res.ok else 1
 
 
 def cmd_build(args) -> int:
-    ws = Workspace(args.work)
+    ws = Workspace(args.script)
     res, by_id = _validated(ws, Path(args.plan) if args.plan else ws.plan_file)
     print(res.report())
     if not res.ok:
@@ -233,14 +235,14 @@ def main(argv: list[str] | None = None) -> int:
 
     sp = sub.add_parser("prepare", help="filtra o HAR e gera catalog.md + correlations.json")
     sp.add_argument("har")
-    sp.add_argument("--out", required=True, help="pasta de trabalho, ex: work/renner_login")
+    sp.add_argument("--out", required=True, help="pasta do script, ex: jornadas/scripts/renner_login")
     sp.add_argument("--host", action="append", help="domínio extra da aplicação (repetível)")
     sp.add_argument("--include-static", action="store_true")
     sp.add_argument("--match", action="append", help="endpoint informado pelo usuário: 'POST /login'")
     sp.set_defaults(func=cmd_prepare)
 
     sp = sub.add_parser("show", help="mostra requisição e resposta completas de um ou mais IDs")
-    sp.add_argument("work")
+    sp.add_argument("script")
     sp.add_argument("ids", type=int, nargs="+")
     sp.add_argument("--max", type=int, default=3000, help="limite de caracteres por body")
     sp.add_argument("--redact", action="store_true",
@@ -248,17 +250,17 @@ def main(argv: list[str] | None = None) -> int:
     sp.set_defaults(func=cmd_show)
 
     sp = sub.add_parser("match", help="casa endpoints ('POST /login') com IDs do catálogo")
-    sp.add_argument("work")
+    sp.add_argument("script")
     sp.add_argument("specs", nargs="+")
     sp.set_defaults(func=cmd_match)
 
     for name, func, helptext in (("validate", cmd_validate, "valida o plan.json"),
                                  ("build", cmd_build, "valida e gera o .jmx")):
         sp = sub.add_parser(name, help=helptext)
-        sp.add_argument("work")
-        sp.add_argument("--plan", help="padrão: <work>/plan.json")
+        sp.add_argument("script")
+        sp.add_argument("--plan", help="padrão: <script>/_geracao/plan.json")
         if name == "build":
-            sp.add_argument("--out", help="padrão: <work>/<nome_teste>.jmx")
+            sp.add_argument("--out", help="padrão: <script>/<nome_teste>.jmx")
             sp.add_argument("--config", default=str(CONFIG_DIR / "defaults.yaml"))
         sp.set_defaults(func=func)
 
