@@ -19,11 +19,17 @@ e a jornada "login, ver produto, adicionar à sacola".
 
 A jornada pode ser texto livre (`"login, ver produto"`), endpoints (`"POST /login, GET */products/*"`) ou os dois.
 
+Para salvar em outro lugar, passe a pasta no fim (relativa, absoluta ou com `~`):
+```
+/gerar-jmeter jornadas/hars/teste.har "login, ver produto" ~/jmeter
+```
+
 Para ajustar, peça na mesma conversa: *"tira a requisição do datalayer"*, *"renomeia a etapa 2 para Sacola"*.
 
 ## 3. Resultado
+Em `jornadas/scripts/<proj>/` (ou `<pasta informada>/<proj>/`):
 ```
-jornadas/scripts/<proj>/
+<proj>/
 ├── <nome>.jmx      # abra no JMeter
 ├── massa.csv       # login/senha
 └── _geracao/       # arquivos internos da geração

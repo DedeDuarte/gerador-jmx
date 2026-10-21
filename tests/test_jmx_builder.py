@@ -1,4 +1,5 @@
 import os
+import shutil
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -7,7 +8,7 @@ from harjmx.commands import Workspace, main
 from harjmx.jmx_builder import Controller, arrange, endpoint_name, request_name, xml_value
 from harjmx.plan import Plan
 
-from conftest import GOLDEN
+from conftest import FIXTURES, GOLDEN
 
 
 def test_endpoint_naming():
@@ -63,3 +64,13 @@ def test_build_refuses_invalid_plan(mini_work):
                                               encoding="utf-8")
     assert main(["build", str(mini_work)]) == 1
     assert not (mini_work / "x.jmx").exists()
+
+
+def test_destino_com_til_vai_para_a_home(tmp_path, monkeypatch):
+    for var in ("HOME", "USERPROFILE"):
+        monkeypatch.setenv(var, str(tmp_path))
+    assert main(["prepare", str(FIXTURES / "mini_login.har"), "--out", "~/jmeter/mini"]) == 0
+    shutil.copy(FIXTURES / "mini_login.plan.json", Workspace("~/jmeter/mini").plan_file)
+    assert main(["build", "~/jmeter/mini"]) == 0
+    assert (tmp_path / "jmeter" / "mini" / "mini_login.jmx").exists()
+    assert (tmp_path / "jmeter" / "mini" / "_geracao" / "catalog.md").exists()

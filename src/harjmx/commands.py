@@ -36,7 +36,7 @@ class Workspace:
     _geracao/, os resíduos da geração: session.json (HAR + filtros), catálogo, correlações e plano."""
 
     def __init__(self, path: str | Path):
-        self.path = Path(path)
+        self.path = Path(path).expanduser()
         self.main_host = ""
         self.excluded: dict[int, str] = {}
 
@@ -81,7 +81,7 @@ class Workspace:
 
 def cmd_prepare(args) -> int:
     ws = Workspace(args.out)
-    ws.save_session(Session(har=str(Path(args.har).resolve()), extra_domains=args.host or [],
+    ws.save_session(Session(har=str(Path(args.har).expanduser().resolve()), extra_domains=args.host or [],
                             include_static=args.include_static))
     all_entries, kept = ws.load()
     cands, sem_origem = correlations.detect(kept)
@@ -197,21 +197,21 @@ def _validated(ws: Workspace, plan_path: Path):
 
 def cmd_validate(args) -> int:
     ws = Workspace(args.script)
-    res, _ = _validated(ws, Path(args.plan) if args.plan else ws.plan_file)
+    res, _ = _validated(ws, Path(args.plan).expanduser() if args.plan else ws.plan_file)
     print(res.report())
     return 0 if res.ok else 1
 
 
 def cmd_build(args) -> int:
     ws = Workspace(args.script)
-    res, by_id = _validated(ws, Path(args.plan) if args.plan else ws.plan_file)
+    res, by_id = _validated(ws, Path(args.plan).expanduser() if args.plan else ws.plan_file)
     print(res.report())
     if not res.ok:
         print("Build cancelado: corrija os erros do plano.")
         return 1
     config = jmx_builder.load_config(Path(args.config))
     result = jmx_builder.build(res.plan, res.variaveis, by_id, config)
-    out = Path(args.out) if args.out else ws.path / f"{res.plan.nome_teste}.jmx"
+    out = Path(args.out).expanduser() if args.out else ws.path / f"{res.plan.nome_teste}.jmx"
     out.write_text(result.jmx, encoding="utf-8")
     print(f"JMX: {out}")
     if result.csv_header:

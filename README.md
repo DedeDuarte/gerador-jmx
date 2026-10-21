@@ -64,7 +64,8 @@ Os padrões (thread group, think time, headers descartados) ficam em
 ## Estrutura
 
 ### Jornadas
-Entradas e saídas ficam em `jornadas/`, fora do git (HARs e scripts têm credenciais e cookies):
+Entradas e saídas ficam em `jornadas/`, fora do git (HARs e scripts têm credenciais e cookies).
+A skill aceita outro destino para os scripts (`/gerar-jmeter <har> "<jornada>" ~/jmeter`):
 ```
 jornadas/
 ├── hars/                        # HARs mais usados (opcional: o HAR pode vir de qualquer lugar)

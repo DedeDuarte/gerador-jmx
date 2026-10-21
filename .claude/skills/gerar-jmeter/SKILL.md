@@ -1,7 +1,7 @@
 ---
 name: gerar-jmeter
 description: Gera um script JMeter (.jmx) a partir de um arquivo .har e da descrição da jornada (texto livre e/ou lista de endpoints). Use quando o usuário pedir para criar, gerar ou montar um JMeter/jornada/script de carga a partir de um HAR.
-argument-hint: <caminho do .har> <jornada: "login, buscar produto, checkout" e/ou "POST /login, GET /cart">
+argument-hint: <caminho do .har> <jornada: "login, buscar produto, checkout" e/ou "POST /login, GET /cart"> [destino: ./saida, ~/jmeter ou C:\jmeter]
 ---
 
 # Gerar JMeter a partir de um HAR
@@ -18,21 +18,27 @@ por falta do pacote, rode `python -m pip install -e .` uma vez.
 - **HAR**: caminho do arquivo. Se vier só o nome, procure em `jornadas/hars/`. Se não vier, pergunte.
 - **Jornada**: texto livre ("login, buscar produto, adicionar à sacola") e/ou endpoints
   explícitos ("POST /login", "GET */products/*"). Se não vier nenhum dos dois, pergunte.
-- **Projeto**: nome em snake_case para a pasta `jornadas/scripts/<proj>`. Derive do nome do HAR.
-  O `.jmx` e o `massa.csv` ficam na raiz dela; catálogo, correlações, plano e o resto da
-  geração ficam em `jornadas/scripts/<proj>/_geracao/`.
+- **Destino** (opcional): último argumento, depois da jornada entre aspas. É a pasta onde o
+  script é criado. Pode ser relativo à raiz do repositório (`./saida`, `../testes`), absoluto
+  (`C:\jmeter`) ou começar com `~` (`~/jmeter`). Se não vier, use `jornadas/scripts` sem
+  perguntar. Só pergunte se não der para separar o que é jornada e o que é destino.
+- **Projeto**: nome em snake_case, derivado do nome do HAR.
+- **Pasta do script** (`<pasta>` no resto deste roteiro): `<destino>/<proj>`, ex:
+  `jornadas/scripts/renner_login` ou `~/jmeter/renner_login`. O `.jmx` e o `massa.csv` ficam na
+  raiz dela; catálogo, correlações, plano e o resto da geração ficam em `<pasta>/_geracao/`.
+  Se `<pasta>` já tiver um script, pergunte se pode sobrescrever ou use outro nome.
 
 ## Passo a passo
 
 ### 1. Preparar
 ```
-python -m harjmx prepare "<har>" --out jornadas/scripts/<proj> [--match "POST /login" ...]
+python -m harjmx prepare "<har>" --out "<pasta>" [--match "POST /login" ...]
 ```
 Passe cada endpoint explícito do usuário em um `--match`. O catálogo vai listar os IDs que
 cada um casou.
 
 ### 2. Ler o catálogo
-Leia `jornadas/scripts/<proj>/_geracao/catalog.md`. Ele mostra estrutura e nomes de chaves, sem valores.
+Leia `<pasta>/_geracao/catalog.md`. Ele mostra estrutura e nomes de chaves, sem valores.
 - **Hosts excluídos como terceiros**: se a jornada depende de uma API ou SSO em outro
   domínio (ex: `sso.empresa.com`, `api.empresa.com.br`), rode o prepare de novo com
   `--host <dominio>`.
@@ -63,10 +69,10 @@ Leia `jornadas/scripts/<proj>/_geracao/catalog.md`. Ele mostra estrutura e nomes
 - **Redirects**: o sampler segue o redirect, então não inclua a requisição de destino
   separadamente. Exceção: o destino tem dados que você precisa extrair.
 - Na dúvida sobre o que uma requisição faz, veja os detalhes com
-  `python -m harjmx show jornadas/scripts/<proj> <id> [<id>...] --redact`.
+  `python -m harjmx show "<pasta>" <id> [<id>...] --redact`.
   - O `--redact` mascara senhas, tokens, cookies e login/e-mail, e mostra só o tamanho.
   - Tire o `--redact` apenas se precisar do valor real, e não repita esses valores na conversa.
-- Para procurar um endpoint, use `python -m harjmx match jornadas/scripts/<proj> "* *cart*"`. O `*` no
+- Para procurar um endpoint, use `python -m harjmx match "<pasta>" "* *cart*"`. O `*` no
   método casa qualquer método. A busca inclui as requisições excluídas pelos filtros e mostra
   o motivo da exclusão.
 - Se um passo pedido pelo usuário não existe no HAR, diga isso e peça uma gravação nova.
@@ -76,7 +82,7 @@ Leia `jornadas/scripts/<proj>/_geracao/catalog.md`. Ele mostra estrutura e nomes
   anterior. Se a origem não faz parte da jornada, não inclua a correlação; prefira um
   extractor manual numa requisição que já está no plano.
 
-### 4. Escrever `jornadas/scripts/<proj>/_geracao/plan.json`
+### 4. Escrever `<pasta>/_geracao/plan.json`
 Use [plan.example.json](plan.example.json) como modelo. As regras de nome e agrupamento
 estão em [boas-praticas.md](boas-praticas.md) e o Python as aplica sozinho. Você só fornece
 as peças:
@@ -99,7 +105,7 @@ Não copie headers, bodies nem valores para o plano. O build busca tudo no HAR.
 
 ### 5. Validar até passar
 ```
-python -m harjmx validate jornadas/scripts/<proj>
+python -m harjmx validate "<pasta>"
 ```
 Corrija cada `ERRO` no plan.json e rode de novo. As mensagens dizem o que mudar. Leia os
 `AVISO`s:
@@ -108,9 +114,9 @@ Corrija cada `ERRO` no plan.json e rode de novo. As mensagens dizem o que mudar.
 
 ### 6. Gerar
 ```
-python -m harjmx build jornadas/scripts/<proj>
+python -m harjmx build "<pasta>"
 ```
-Gera `jornadas/scripts/<proj>/<nome_teste>.jmx` e, se houver parâmetros de CSV, o `massa.csv`. **Nunca
+Gera `<pasta>/<nome_teste>.jmx` e, se houver parâmetros de CSV, o `massa.csv`. **Nunca
 edite o .jmx à mão**: mude o plano e rode o build de novo.
 
 ### 7. Reportar ao usuário
@@ -127,4 +133,4 @@ edite o .jmx à mão**: mude o plano e rode o build de novo.
       listas montadas a partir de um array da resposta precisam de ajuste manual;
     - o slug do produto em headers `Referer` continua literal.
 - Como rodar um smoke test, contra um ambiente onde isso seja permitido:
-  `jmeter -n -t jornadas/scripts/<proj>/<nome>.jmx -l jornadas/scripts/<proj>/_geracao/smoke.jtl -JVUs=1 -JRampup=1 -Jduration=30`
+  `jmeter -n -t "<pasta>/<nome>.jmx" -l "<pasta>/_geracao/smoke.jtl" -JVUs=1 -JRampup=1 -Jduration=30`
