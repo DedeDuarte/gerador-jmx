@@ -4,68 +4,10 @@ Gera scripts JMeter (`.jmx`) a partir de um `.har` e de uma descrição da jorna
 ("login, ver produto, adicionar à sacola").
 
 ## Como rodar
-
-### 0. Instalação (uma vez)
 ```powershell
 python -m pip install -e ".[dev]"
 ```
-
-### 1. Direto pelo terminal
-Cinco comandos, sempre a partir da raiz do repositório. O exemplo usa um HAR de `jornadas/hars/`.
-
-```powershell
-# 1. Filtra o HAR e gera o catálogo das requisições
-python -m harjmx prepare jornadas\hars\renner_login.har --out jornadas\scripts\meu_teste
-
-# 2. Leia o catálogo: IDs das requisições, correlações detectadas e avisos
-code jornadas\scripts\meu_teste\_geracao\catalog.md
-
-#    Para ver uma requisição inteira (as senhas ficam mascaradas):
-python -m harjmx show jornadas\scripts\meu_teste 32 --redact
-#    Para achar um endpoint:
-python -m harjmx match jornadas\scripts\meu_teste "* *login*"
-
-# 3. Escreva jornadas\scripts\meu_teste\_geracao\plan.json com a jornada
-#    (modelo: .claude\skills\gerar-jmeter\plan.example.json)
-
-# 4. Confere o plano contra o HAR. Os erros dizem o que corrigir
-python -m harjmx validate jornadas\scripts\meu_teste
-
-# 5. Gera o .jmx (e o massa.csv com login/senha)
-python -m harjmx build jornadas\scripts\meu_teste
-```
-O resultado sai em `jornadas\scripts\meu_teste\<nome_teste>.jmx`, que você pode abrir no JMeter ou rodar
-sem interface:
-```powershell
-C:\apache-jmeter-5.6.3\bin\jmeter.bat -n -t jornadas\scripts\meu_teste\<nome_teste>.jmx -l jornadas\scripts\meu_teste\_geracao\smoke.jtl -JVUs=1 -JRampup=1 -Jduration=30
-```
-
-### 2. Pelo Claude Code ou Codex
-O agente faz os 5 passos acima sozinho. A parte de julgamento, escrever o `plan.json`,
-também fica com ele.
-
-**Claude Code**: abra o repositório e rode a skill:
-```
-/gerar-jmeter jornadas/hars/teste.har "login, ver produto, adicionar à sacola"
-```
-
-**Codex** (ou outro agente): ele não conhece a skill. Peça que siga o mesmo roteiro:
-```
-Siga as instruções de .claude/skills/gerar-jmeter/SKILL.md com o HAR
-jornadas/hars/teste.har e a jornada "login, ver produto, adicionar à sacola".
-```
-
-A jornada pode ser texto livre, endpoints explícitos (`POST /login, GET */products/*`) ou os
-dois. No fim, o agente informa o caminho do `.jmx`, a árvore gerada, as variáveis e os riscos
-que encontrou.
-
-> **Grave o HAR com conteúdo.** No DevTools, use "Preserve log", "Disable cache" e "Save all
-> as HAR with content". Sem os corpos das respostas, as correlações que saem delas não são
-> detectadas. Mais detalhes em [antigo/docs/HAR_COM_COOKIES.md](antigo/docs/HAR_COM_COOKIES.md).
-
-> ⚠️ O JMX gerado aponta para o host do HAR, muitas vezes **produção**, e usa o login real
-> gravado. Para rodar contra outro ambiente, troque a variável `host` em *User Defined
-> Variables*.
+Para gerar um script pelo Claude Code ou Codex, veja o **[GUIA.md](GUIA.md)**.
 
 ## Como funciona
 O **Python** faz tudo que é determinístico:
