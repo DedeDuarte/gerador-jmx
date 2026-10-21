@@ -1,7 +1,10 @@
-"""Detecta valores dinâmicos: um valor enviado na requisição Y que veio da resposta de X (X < Y).
+"""ETAPA 1 — Correlações.
 
+Detecta valores dinâmicos: um valor enviado na requisição Y que veio da resposta de X (X < Y).
 Parte dos valores *usados* nas requisições e procura a primeira resposta anterior que os contém.
 Assim só aparecem candidatos que de fato importam para o JMeter funcionar.
+
+`detect(entries)` → (candidatos `Candidato`, valores sem origem `SemOrigem`).
 """
 from __future__ import annotations
 
@@ -12,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from urllib.parse import unquote
 
 from harjmx import jsonpath
-from harjmx.models import Entry
+from harjmx.har import Entry, path_segments
 
 _IGNORED_REQUEST_HEADERS = {"cookie", "host", "content-length", "referer", "origin", "user-agent",
                             "accept", "accept-language", "accept-encoding", "connection", "content-type",
@@ -70,28 +73,6 @@ def is_strong(value: str) -> bool:
         return True
     # Sem dígitos só vale se for longo e não parecer palavra/slug.
     return len(v) >= 16 and not re.fullmatch(r"[a-z\-_ ]+", v)
-
-
-def path_segments(e: Entry) -> list[str]:
-    return [s for s in e.path.split("/") if s]
-
-
-def field_value(e: Entry, local: str) -> str | None:
-    """Lê o valor real de um local (query.k, form.k, header.k, body.<jsonpath>, path.n) da requisição."""
-    kind, _, key = local.partition(".")
-    if kind == "path" and key.isdigit():
-        segs = path_segments(e)
-        return unquote(segs[int(key)]) if int(key) < len(segs) else None
-    if kind == "query":
-        return next((v for k, v in e.query if k == key), None)
-    if kind == "header":
-        return e.header(key)
-    if kind == "form" and e.body and e.body.kind == "form":
-        return next((v for k, v in e.body.params if k == key), None)
-    if kind == "body" and e.body and e.body.kind == "json" and key:
-        found = jsonpath.find(e.body.json, key)
-        return jsonpath.as_text(found[0]) if found else None
-    return None
 
 
 def request_fields(e: Entry) -> list[tuple[str, str]]:

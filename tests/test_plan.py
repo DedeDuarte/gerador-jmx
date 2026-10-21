@@ -2,8 +2,8 @@ import copy
 
 import pytest
 
-from harjmx.plan.validate import validate
-from harjmx.workspace import Workspace
+from harjmx.cli import Workspace
+from harjmx.plan import validate
 
 
 def _run(work, plan):

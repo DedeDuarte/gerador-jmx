@@ -1,7 +1,7 @@
 import re
 
 from harjmx import correlation
-from harjmx.workspace import Workspace
+from harjmx.cli import Workspace
 
 
 def test_detects_all_dynamic_values(mini_work):

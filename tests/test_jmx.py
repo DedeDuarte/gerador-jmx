@@ -4,19 +4,17 @@ import xml.etree.ElementTree as ET
 import pytest
 
 from harjmx.cli import main
-from harjmx.jmx import naming
-from harjmx.jmx.builder import xml_value
-from harjmx.jmx.structure import Controller, arrange
-from harjmx.plan.schema import Plan
+from harjmx.jmx import Controller, arrange, endpoint_name, request_name, xml_value
+from harjmx.plan import Plan
 
 from conftest import GOLDEN
 
 
 def test_endpoint_naming():
-    assert naming.endpoint("/api/products/${idProduto}") == "/api/products/{idProduto}"
-    assert naming.endpoint("/api/orders/123456/items?x=1") == "/api/orders/{id}/items"
-    assert naming.endpoint("/a/3f2b8c1e-1111-2222-3333-444455556666") == "/a/{id}"
-    assert naming.request(1, 0, "post", "/api/login", "Autenticar Usuário") == \
+    assert endpoint_name("/api/products/${idProduto}") == "/api/products/{idProduto}"
+    assert endpoint_name("/api/orders/123456/items?x=1") == "/api/orders/{id}/items"
+    assert endpoint_name("/a/3f2b8c1e-1111-2222-3333-444455556666") == "/a/{id}"
+    assert request_name(1, 0, "post", "/api/login", "Autenticar Usuário") == \
         "1.0 POST - /api/login - Autenticar Usuário"
 
 

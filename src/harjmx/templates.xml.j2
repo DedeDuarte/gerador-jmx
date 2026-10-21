@@ -1,0 +1,255 @@
+{#
+  Todos os elementos JMeter do JMX gerado, um macro por elemento (chamados em jmx.py como TPL.<macro>).
+  Todo {{ valor }} passa por xml_value(): é escapado e quebras de linha viram &#10;.
+  Para mudar o estilo do JMX gerado, edite aqui; depois rode `UPDATE_GOLDEN=1 python -m pytest`.
+#}
+
+{# ===== Test Plan ===== #}
+
+{% macro test_plan(nome) -%}
+<TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="{{ nome }}">
+  <boolProp name="TestPlan.functional_mode">false</boolProp>
+  <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+  <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+    <collectionProp name="Arguments.arguments"/>
+  </elementProp>
+</TestPlan>
+{%- endmacro %}
+
+{# ===== Elementos de configuração: User Defined Variables, Cookie/Cache Manager, CSV, listener ===== #}
+
+{% macro user_defined_variables(variaveis) -%}
+<Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+  <collectionProp name="Arguments.arguments">
+    {% for nome, valor in variaveis %}
+    <elementProp name="{{ nome }}" elementType="Argument">
+      <stringProp name="Argument.name">{{ nome }}</stringProp>
+      <stringProp name="Argument.value">{{ valor }}</stringProp>
+      <stringProp name="Argument.metadata">=</stringProp>
+    </elementProp>
+    {% endfor %}
+  </collectionProp>
+</Arguments>
+{%- endmacro %}
+
+{% macro cookie_manager(cookies) -%}
+<CookieManager guiclass="CookiePanel" testclass="CookieManager" testname="HTTP Cookie Manager" enabled="true">
+  <collectionProp name="CookieManager.cookies">
+    {% for c in cookies %}
+    <elementProp name="{{ c.name }}" elementType="Cookie" testname="{{ c.name }}">
+      <stringProp name="Cookie.value">{{ c.value }}</stringProp>
+      <stringProp name="Cookie.domain">{{ c.domain }}</stringProp>
+      <stringProp name="Cookie.path">/</stringProp>
+      <boolProp name="Cookie.secure">{{ c.secure }}</boolProp>
+      <longProp name="Cookie.expires">0</longProp>
+      <boolProp name="Cookie.path_specified">true</boolProp>
+      <boolProp name="Cookie.domain_specified">true</boolProp>
+    </elementProp>
+    {% endfor %}
+  </collectionProp>
+  <boolProp name="CookieManager.clearEachIteration">true</boolProp>
+  <boolProp name="CookieManager.controlledByThreadGroup">false</boolProp>
+</CookieManager>
+{%- endmacro %}
+
+{% macro cache_manager() -%}
+<CacheManager guiclass="CacheManagerGui" testclass="CacheManager" testname="HTTP Cache Manager" enabled="true">
+  <boolProp name="clearEachIteration">true</boolProp>
+  <boolProp name="useExpires">true</boolProp>
+  <boolProp name="CacheManager.controlledByThread">false</boolProp>
+</CacheManager>
+{%- endmacro %}
+
+{% macro csv_data_set(arquivo, variaveis) -%}
+<CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Data Set - {{ arquivo }}" enabled="true">
+  <stringProp name="delimiter">,</stringProp>
+  <stringProp name="fileEncoding">UTF-8</stringProp>
+  <stringProp name="filename">{{ arquivo }}</stringProp>
+  <boolProp name="ignoreFirstLine">true</boolProp>
+  <boolProp name="quotedData">true</boolProp>
+  <boolProp name="recycle">true</boolProp>
+  <stringProp name="shareMode">shareMode.all</stringProp>
+  <boolProp name="stopThread">false</boolProp>
+  <stringProp name="variableNames">{{ variaveis | join(",") }}</stringProp>
+</CSVDataSet>
+{%- endmacro %}
+
+{% macro view_results_tree(enabled) -%}
+<ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="{{ enabled }}">
+  <boolProp name="ResultCollector.error_logging">false</boolProp>
+  <objProp>
+    <name>saveConfig</name>
+    <value class="SampleSaveConfiguration">
+      <time>true</time>
+      <latency>true</latency>
+      <timestamp>true</timestamp>
+      <success>true</success>
+      <label>true</label>
+      <code>true</code>
+      <message>true</message>
+      <threadName>true</threadName>
+      <dataType>true</dataType>
+      <encoding>false</encoding>
+      <assertions>true</assertions>
+      <subresults>true</subresults>
+      <responseData>false</responseData>
+      <samplerData>false</samplerData>
+      <xml>false</xml>
+      <fieldNames>true</fieldNames>
+      <responseHeaders>false</responseHeaders>
+      <requestHeaders>false</requestHeaders>
+      <responseDataOnError>false</responseDataOnError>
+      <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+      <assertionsResultsToSave>0</assertionsResultsToSave>
+      <bytes>true</bytes>
+      <sentBytes>true</sentBytes>
+      <url>true</url>
+      <threadCounts>true</threadCounts>
+      <idleTime>true</idleTime>
+      <connectTime>true</connectTime>
+    </value>
+  </objProp>
+  <stringProp name="filename"></stringProp>
+</ResultCollector>
+{%- endmacro %}
+
+{# ===== Thread Group e Think Time ===== #}
+
+{% macro thread_group(tg) -%}
+<ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="{{ tg.name }}" enabled="true">
+  <stringProp name="ThreadGroup.num_threads">{{ tg.num_threads }}</stringProp>
+  <stringProp name="ThreadGroup.ramp_time">{{ tg.ramp_time }}</stringProp>
+  <stringProp name="ThreadGroup.duration">{{ tg.duration }}</stringProp>
+  <stringProp name="ThreadGroup.delay">{{ tg.delay }}</stringProp>
+  <boolProp name="ThreadGroup.same_user_on_next_iteration">false</boolProp>
+  <boolProp name="ThreadGroup.scheduler">{{ tg.scheduler }}</boolProp>
+  <stringProp name="ThreadGroup.on_sample_error">{{ tg.on_sample_error }}</stringProp>
+  <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+    <intProp name="LoopController.loops">{{ tg.loops }}</intProp>
+    <boolProp name="LoopController.continue_forever">false</boolProp>
+  </elementProp>
+</ThreadGroup>
+{%- endmacro %}
+
+{% macro think_time(delay_ms, range_ms) -%}
+<UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Think Time" enabled="true">
+  <stringProp name="ConstantTimer.delay">{{ delay_ms }}</stringProp>
+  <stringProp name="RandomTimer.range">{{ range_ms }}</stringProp>
+</UniformRandomTimer>
+{%- endmacro %}
+
+{# ===== Header Manager (global e por sampler) ===== #}
+
+{% macro header_manager(nome, headers) -%}
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="{{ nome }}" enabled="true">
+  <collectionProp name="HeaderManager.headers">
+    {% for k, v in headers %}
+    <elementProp name="" elementType="Header">
+      <stringProp name="Header.name">{{ k }}</stringProp>
+      <stringProp name="Header.value">{{ v }}</stringProp>
+    </elementProp>
+    {% endfor %}
+  </collectionProp>
+</HeaderManager>
+{%- endmacro %}
+
+{# ===== Simple Controller ===== #}
+
+{% macro simple_controller(nome) -%}
+<GenericController guiclass="LogicControllerGui" testclass="GenericController" testname="{{ nome }}" enabled="true"/>
+{%- endmacro %}
+
+{# ===== HTTP Request (sampler) ===== #}
+
+{% macro http_sampler(s, http) -%}
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="{{ s.nome }}" enabled="true">
+  <stringProp name="TestPlan.comments">HAR #{{ s.har_id }}</stringProp>
+  <stringProp name="HTTPSampler.domain">{{ s.domain }}</stringProp>
+  <stringProp name="HTTPSampler.port">{{ s.port }}</stringProp>
+  <stringProp name="HTTPSampler.protocol">{{ s.protocol }}</stringProp>
+  <stringProp name="HTTPSampler.contentEncoding">{{ http.content_encoding }}</stringProp>
+  <stringProp name="HTTPSampler.path">{{ s.path }}</stringProp>
+  <stringProp name="HTTPSampler.method">{{ s.method }}</stringProp>
+  <boolProp name="HTTPSampler.follow_redirects">{{ s.follow_redirects }}</boolProp>
+  <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+  <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+  <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+{% if s.raw_body is not none %}
+  <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+  <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+    <collectionProp name="Arguments.arguments">
+      <elementProp name="" elementType="HTTPArgument">
+        <boolProp name="HTTPArgument.always_encode">false</boolProp>
+        <stringProp name="Argument.value">{{ s.raw_body }}</stringProp>
+        <stringProp name="Argument.metadata">=</stringProp>
+      </elementProp>
+    </collectionProp>
+  </elementProp>
+{% else %}
+  <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+  <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+    <collectionProp name="Arguments.arguments">
+{% for k, v in s.args %}
+      <elementProp name="{{ k }}" elementType="HTTPArgument">
+        <boolProp name="HTTPArgument.always_encode">true</boolProp>
+        <stringProp name="Argument.value">{{ v }}</stringProp>
+        <stringProp name="Argument.metadata">=</stringProp>
+        <boolProp name="HTTPArgument.use_equals">true</boolProp>
+        <stringProp name="Argument.name">{{ k }}</stringProp>
+      </elementProp>
+{% endfor %}
+    </collectionProp>
+  </elementProp>
+{% endif %}
+  <stringProp name="HTTPSampler.implementation">{{ http.implementation }}</stringProp>
+</HTTPSamplerProxy>
+{%- endmacro %}
+
+{# ===== Extractors (pós-processadores) ===== #}
+
+{% macro json_extractor(nome, variavel, expressao, match) -%}
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="{{ nome }}" enabled="true">
+  <stringProp name="JSONPostProcessor.referenceNames">{{ variavel }}</stringProp>
+  <stringProp name="JSONPostProcessor.jsonPathExprs">{{ expressao }}</stringProp>
+  <stringProp name="JSONPostProcessor.match_numbers">{{ match }}</stringProp>
+  <stringProp name="JSONPostProcessor.defaultValues">{{ variavel }}_ERR</stringProp>
+</JSONPostProcessor>
+{%- endmacro %}
+
+{% macro regex_extractor(nome, variavel, expressao, campo, match) -%}
+<RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="{{ nome }}" enabled="true">
+  <stringProp name="RegexExtractor.useHeaders">{{ campo == "headers" }}</stringProp>
+  <stringProp name="RegexExtractor.refname">{{ variavel }}</stringProp>
+  <stringProp name="RegexExtractor.regex">{{ expressao }}</stringProp>
+  <stringProp name="RegexExtractor.template">$1$</stringProp>
+  <stringProp name="RegexExtractor.default">{{ variavel }}_ERR</stringProp>
+  <boolProp name="RegexExtractor.default_empty_value">false</boolProp>
+  <stringProp name="RegexExtractor.match_number">{{ match }}</stringProp>
+</RegexExtractor>
+{%- endmacro %}
+
+{# ===== Assertions ===== #}
+
+{# Assertion.test_type: 8 = Equals, 16 = Substring. "Asserion.test_strings" é o nome real no JMeter. #}
+{% macro response_assertion(nome, campo, tipo, esperado) -%}
+<ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="{{ nome }}" enabled="true">
+  <collectionProp name="Asserion.test_strings">
+    <stringProp name="0">{{ esperado }}</stringProp>
+  </collectionProp>
+  <stringProp name="Assertion.custom_message"></stringProp>
+  <stringProp name="Assertion.test_field">{{ campo }}</stringProp>
+  <boolProp name="Assertion.assume_success">false</boolProp>
+  <intProp name="Assertion.test_type">{{ tipo }}</intProp>
+</ResponseAssertion>
+{%- endmacro %}
+
+{% macro json_assertion(nome, jsonpath) -%}
+<JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="{{ nome }}" enabled="true">
+  <stringProp name="JSON_PATH">{{ jsonpath }}</stringProp>
+  <stringProp name="EXPECTED_VALUE"></stringProp>
+  <boolProp name="JSONVALIDATION">false</boolProp>
+  <boolProp name="EXPECT_NULL">false</boolProp>
+  <boolProp name="INVERT">false</boolProp>
+  <boolProp name="ISREGEX">true</boolProp>
+</JSONPathAssertion>
+{%- endmacro %}

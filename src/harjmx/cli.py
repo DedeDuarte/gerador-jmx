@@ -1,4 +1,8 @@
-"""harjmx: prepare | show | match | validate | build. Todos (menos prepare) recebem a pasta work/<proj>."""
+"""Linha de comando: prepare | show | match | validate | build.
+
+Liga as etapas do pipeline (har → correlation → catalog → plan → jmx). Todos os comandos,
+menos o prepare, recebem a pasta de trabalho work/<proj>, que lembra o HAR e os filtros usados.
+"""
 from __future__ import annotations
 
 import argparse
@@ -6,14 +10,72 @@ import csv
 import json
 import re
 import sys
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from harjmx import correlation
-from harjmx.har import catalog, matcher
-from harjmx.jmx import builder
-from harjmx.plan import validate as plan_validate
-from harjmx.workspace import CONFIG_DIR, Session, Workspace
+from harjmx import catalog, correlation, har, jmx, plan
+from harjmx.correlation import Candidato
+from harjmx.har import Entry
 
+# --- Pasta de trabalho work/<proj> --------------------------------------------------------
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CONFIG_DIR = REPO_ROOT / "config"
+
+
+@dataclass
+class Session:
+    har: str
+    extra_domains: list[str] = field(default_factory=list)
+    include_static: bool = False
+    denylist: str = str(CONFIG_DIR / "denylist.txt")
+
+
+class Workspace:
+    """Pasta work/<proj>: session.json (HAR + filtros), catálogo, correlações, plano e saídas."""
+
+    def __init__(self, path: str | Path):
+        self.path = Path(path)
+        self.main_host = ""
+        self.excluded: dict[int, str] = {}
+
+    session_file = property(lambda self: self.path / "session.json")
+    catalog_md = property(lambda self: self.path / "catalog.md")
+    catalog_json = property(lambda self: self.path / "catalog.json")
+    correlations_file = property(lambda self: self.path / "correlations.json")
+    plan_file = property(lambda self: self.path / "plan.json")
+
+    def save_session(self, session: Session) -> None:
+        self.path.mkdir(parents=True, exist_ok=True)
+        self.session_file.write_text(json.dumps(asdict(session), indent=2, ensure_ascii=False),
+                                     encoding="utf-8")
+
+    def session(self) -> Session:
+        if not self.session_file.exists():
+            raise SystemExit(f"{self.path} não tem session.json. Rode `harjmx prepare` primeiro.")
+        return Session(**json.loads(self.session_file.read_text(encoding="utf-8")))
+
+    def load(self) -> tuple[list[Entry], list[Entry]]:
+        """(todas as entries, entries mantidas pelos filtros)."""
+        s = self.session()
+        all_entries, self.main_host = har.load(s.har)
+        cfg = har.FilterConfig(
+            main_host=self.main_host,
+            extra_domains=s.extra_domains,
+            denylist=har.load_denylist(Path(s.denylist)),
+            include_static=s.include_static,
+        )
+        kept, self.excluded = har.split(all_entries, cfg)
+        return all_entries, kept
+
+    def correlations(self) -> list[Candidato]:
+        if not self.correlations_file.exists():
+            return []
+        data = json.loads(self.correlations_file.read_text(encoding="utf-8"))
+        return [Candidato.from_dict(d) for d in data]
+
+
+# --- Comandos ----------------------------------------------------------------------------
 
 def cmd_prepare(args) -> int:
     ws = Workspace(args.out)
@@ -23,8 +85,8 @@ def cmd_prepare(args) -> int:
     cands, sem_origem = correlation.detect(kept)
     ws.correlations_file.write_text(json.dumps([c.to_dict() for c in cands], indent=2, ensure_ascii=False),
                                     encoding="utf-8")
-    md, data = catalog.build(kept, len(all_entries), ws.main_host, ws.excluded, all_entries, cands,
-                             sem_origem, Path(args.har).name)
+    md, data = catalog.build(kept, all_entries, ws.excluded, ws.main_host, cands, sem_origem,
+                             Path(args.har).name)
     if args.match:
         md += ("\n## Endpoints informados pelo usuário\n\n"
                + _match_lines(all_entries, ws.excluded, args.match) + "\n")
@@ -41,7 +103,7 @@ def _match_lines(entries, excluded: dict[int, str], specs: list[str]) -> str:
     lines = []
     for spec in specs:
         try:
-            ids = matcher.match(entries, spec)
+            ids = har.match(entries, spec)
         except ValueError as err:
             lines.append(f"- `{spec}`: {err}")
             continue
@@ -126,8 +188,8 @@ def _cut(text: str, limit: int) -> str:
 
 def _validated(ws: Workspace, plan_path: Path):
     _, kept = ws.load()
-    raw = plan_validate.load_plan(plan_path)
-    res = plan_validate.validate(raw, kept, ws.excluded, ws.correlations())
+    raw = plan.load_plan(plan_path)
+    res = plan.validate(raw, kept, ws.excluded, ws.correlations())
     return res, {e.id: e for e in kept}
 
 
@@ -145,8 +207,8 @@ def cmd_build(args) -> int:
     if not res.ok:
         print("Build cancelado: corrija os erros do plano.")
         return 1
-    config = builder.load_config(Path(args.config))
-    result = builder.build(res.plan, res.variaveis, by_id, config)
+    config = jmx.load_config(Path(args.config))
+    result = jmx.build(res.plan, res.variaveis, by_id, config)
     out = Path(args.out) if args.out else ws.path / f"{res.plan.nome_teste}.jmx"
     out.write_text(result.jmx, encoding="utf-8")
     print(f"JMX: {out}")

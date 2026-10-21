@@ -1,14 +1,14 @@
-from harjmx.har import filters, loader, matcher
-from harjmx.workspace import Session, Workspace
+from harjmx import har
+from harjmx.cli import Session, Workspace
 
 from conftest import FIXTURES
 
 
 def test_base_domain():
-    assert filters.base_domain("www.lojasrenner.com.br") == "lojasrenner.com.br"
-    assert filters.base_domain("api.site.com") == "site.com"
-    assert filters.base_domain("127.0.0.1") == "127.0.0.1"
-    assert filters.base_domain("localhost") == "localhost"
+    assert har.base_domain("www.lojasrenner.com.br") == "lojasrenner.com.br"
+    assert har.base_domain("api.site.com") == "site.com"
+    assert har.base_domain("127.0.0.1") == "127.0.0.1"
+    assert har.base_domain("localhost") == "localhost"
 
 
 def test_exclusion_reasons(tmp_path):
@@ -27,7 +27,7 @@ def test_extra_host_is_kept(tmp_path):
 
 
 def test_form_body_keeps_params():
-    entries, host = loader.load(FIXTURES / "mini_login.har")
+    entries, host = har.load(FIXTURES / "mini_login.har")
     login = entries[4]
     assert host == "127.0.0.1"
     assert login.body.kind == "form"
@@ -35,11 +35,11 @@ def test_form_body_keeps_params():
 
 
 def test_matcher():
-    entries, _ = loader.load(FIXTURES / "mini_login.har")
-    assert matcher.match(entries, "POST /api/login") == [5]
-    assert matcher.match(entries, "POST /login") == [5]          # sufixo
-    assert matcher.match(entries, "GET /api/users/*/orders") == [7]
-    assert matcher.match(entries, "/confirm") == [9]
+    entries, _ = har.load(FIXTURES / "mini_login.har")
+    assert har.match(entries, "POST /api/login") == [5]
+    assert har.match(entries, "POST /login") == [5]          # sufixo
+    assert har.match(entries, "GET /api/users/*/orders") == [7]
+    assert har.match(entries, "/confirm") == [9]
 
 
 def test_match_reports_excluded_entries(tmp_path):

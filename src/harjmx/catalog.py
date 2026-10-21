@@ -1,4 +1,8 @@
-"""Catálogo compacto do HAR filtrado. É o que a IA lê: estrutura e nomes de chaves, sem valores."""
+"""ETAPA 1 — Catálogo.
+
+Gera o catalog.md (o que a IA lê) e o catalog.json: estrutura e nomes de chaves de cada
+requisição mantida, correlações candidatas e avisos sobre o HAR. Nunca inclui valores.
+"""
 from __future__ import annotations
 
 import re
@@ -6,7 +10,7 @@ from collections import Counter
 from typing import Any
 
 from harjmx.correlation import Candidato, SemOrigem
-from harjmx.models import Entry
+from harjmx.har import Entry
 
 _COMMON_HEADERS = {
     "accept", "accept-language", "accept-encoding", "cache-control", "connection", "content-length",
@@ -62,9 +66,9 @@ def _signature(e: Entry) -> tuple:
     return (e.method, e.host, e.path, tuple(sorted({k for k, _ in e.query})), _body_summary(e))
 
 
-def build(entries: list[Entry], all_count: int, main_host: str, excluded: dict[int, str],
-          all_entries: list[Entry], correlations: list[Candidato], sem_origem: list[SemOrigem],
-          har_name: str) -> tuple[str, dict]:
+def build(entries: list[Entry], all_entries: list[Entry], excluded: dict[int, str], main_host: str,
+          correlations: list[Candidato], sem_origem: list[SemOrigem], har_name: str) -> tuple[str, dict]:
+    """`entries` são as mantidas; `all_entries`, o HAR inteiro. Retorna (markdown, dados json)."""
     hosts = list(dict.fromkeys(e.host for e in entries))
     alias = {h: f"h{i}" for i, h in enumerate(hosts, start=1)}
     by_id = {e.id: e for e in all_entries}
@@ -120,7 +124,7 @@ def build(entries: list[Entry], all_count: int, main_host: str, excluded: dict[i
     missing = [e.id for e in entries if _missing_body(e)]
     md = [f"# Catálogo HAR: {har_name}", "",
           f"Host principal: {main_host}",
-          f"Mantidas: {len(entries)} de {all_count}. Excluídas: "
+          f"Mantidas: {len(entries)} de {len(all_entries)}. Excluídas: "
           + (", ".join(f"{r} {n}" for r, n in reasons.most_common()) or "nenhuma"), ""]
     if not any(e.response.mime == "text/html" for e in entries):
         md += ["**ATENÇÃO: nenhum documento HTML da aplicação no HAR.** Valores que vêm da página "
