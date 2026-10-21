@@ -12,7 +12,6 @@ Plano validado + HAR → texto do .jmx e a linha do CSV de massa. Em quatro pass
 from __future__ import annotations
 
 import re
-import tomllib
 import xml.etree.ElementTree as ET
 from collections import Counter
 from dataclasses import dataclass, field
@@ -20,6 +19,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
+import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from harjmx.har import Entry
@@ -37,8 +37,8 @@ class BuildResult:
 
 
 def load_config(path: Path) -> dict:
-    with open(path, "rb") as f:
-        return tomllib.load(f)
+    with open(path, encoding="utf-8") as f:
+        return yaml.safe_load(f)
 
 
 def build(plan: Plan, variaveis: list[Variavel], by_id: dict[int, Entry], config: dict) -> BuildResult:

@@ -116,7 +116,7 @@ completo em [.claude/skills/gerar-jmeter/plan.example.json](.claude/skills/gerar
 - **Cookies anti-bot** que o navegador já tinha, pré-carregados no Cookie Manager.
 
 Os padrões (thread group, think time, headers descartados) ficam em
-[config/defaults.toml](config/defaults.toml). Os domínios de telemetria descartados ficam em
+[config/defaults.yaml](config/defaults.yaml). Os domínios de telemetria descartados ficam em
 [config/denylist.txt](config/denylist.txt).
 
 ## Estrutura

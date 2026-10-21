@@ -1,0 +1,44 @@
+# Padrões do JMX gerado. Segue o esqueleto do renner_sap_uy.jmx.
+
+thread_group:
+  name: "Grupo de Usuários"
+  num_threads: "${__P(VUs,1)}"
+  ramp_time: "${__P(Rampup,1)}"
+  duration: "${__intSum(${__P(Rampup,1)},${__P(duration,60)})}"
+  delay: "${__P(startup_delay,0)}"
+  loops: -1
+  scheduler: true
+  on_sample_error: "startnextloop"
+
+think_time:
+  enabled: true
+  delay_ms: 1000
+  range_ms: 2000
+
+http:
+  implementation: "HttpClient4"
+  content_encoding: "UTF-8"
+  follow_redirects: true
+
+cookies:
+  # Pré-carrega no Cookie Manager os cookies que o navegador já tinha antes da jornada
+  # (anti-bot/WAF, ver antigo/docs/HAR_COM_COOKIES.md). Cookies recebidos via Set-Cookie
+  # durante a jornada ficam de fora: o Cookie Manager cuida deles.
+  pre_popular: true
+
+headers:
+  # Nunca copiados do HAR (o JMeter ou o Cookie/Cache Manager cuidam deles).
+  drop:
+    - host
+    - content-length
+    - connection
+    - cookie
+    - accept-encoding
+    - if-none-match
+    - if-modified-since
+    - priority
+  # Adicionado ao Header Manager global quando o HAR tinha Accept-Encoding.
+  accept_encoding: "gzip, deflate"
+
+listeners:
+  view_results_tree: true

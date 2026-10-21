@@ -259,7 +259,7 @@ def main(argv: list[str] | None = None) -> int:
         sp.add_argument("--plan", help="padrão: <work>/plan.json")
         if name == "build":
             sp.add_argument("--out", help="padrão: <work>/<nome_teste>.jmx")
-            sp.add_argument("--config", default=str(CONFIG_DIR / "defaults.toml"))
+            sp.add_argument("--config", default=str(CONFIG_DIR / "defaults.yaml"))
         sp.set_defaults(func=func)
 
     args = p.parse_args(argv)
