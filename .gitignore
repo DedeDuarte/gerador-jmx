@@ -4,9 +4,9 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 
-# Scripts gerados (JMX, massa e resíduos da geração)
-jornadas/scripts/*
-!jornadas/scripts/.gitkeep
+# Scripts gerados (JMX, massa e resíduos da geração); os .har ficam de fora pela regra *.har
+jornadas/*
+!jornadas/hars/
 
 # HARs reais contêm credenciais e cookies
 *.har

@@ -11,20 +11,21 @@ detecta correlações e gera o XML. **Você decide a jornada**: quais requisiç�
 que ordem, como se chamam e quais valores viram variáveis. Você escreve isso em um
 `plan.json`, que referencia as requisições pelo ID do catálogo.
 
-Rode tudo a partir da raiz do repositório com `python -m harjmx ...`. Se o comando falhar
-por falta do pacote, rode `python -m pip install -e .` uma vez.
+Rode os comandos na pasta atual (onde o usuário abriu o Claude): `python -m harjmx ...`
+funciona em qualquer pasta. Se falhar por falta do pacote, peça ao usuário para instalar o
+Agente_JMeter: `python -m pip install -e <pasta do Agente_JMeter>`.
 
 ## Entradas
-- **HAR**: caminho do arquivo. Se vier só o nome, procure em `jornadas/hars/`. Se não vier, pergunte.
+- **HAR**: caminho do arquivo. Se vier só o nome, procure em `jornadas/hars/` da pasta atual. Se não vier, pergunte.
 - **Jornada**: texto livre ("login, buscar produto, adicionar à sacola") e/ou endpoints
   explícitos ("POST /login", "GET */products/*"). Se não vier nenhum dos dois, pergunte.
 - **Destino** (opcional): último argumento, depois da jornada entre aspas. É a pasta onde o
-  script é criado. Pode ser relativo à raiz do repositório (`./saida`, `../testes`), absoluto
-  (`C:\jmeter`) ou começar com `~` (`~/jmeter`). Se não vier, use `jornadas/scripts` sem
-  perguntar. Só pergunte se não der para separar o que é jornada e o que é destino.
-- **Projeto**: nome em snake_case, derivado do nome do HAR.
+  script é criado. Pode ser relativo à pasta atual (`./saida`, `../testes`), absoluto
+  (`C:\jmeter`) ou começar com `~` (`~/jmeter`). Se não vier, use `jornadas` (na pasta atual)
+  sem perguntar. Só pergunte se não der para separar o que é jornada e o que é destino.
+- **Projeto**: nome em snake_case, derivado do nome do HAR. Nunca `hars` (é a pasta dos HARs).
 - **Pasta do script** (`<pasta>` no resto deste roteiro): `<destino>/<proj>`, ex:
-  `jornadas/scripts/renner_login` ou `~/jmeter/renner_login`. O `.jmx` e o `massa.csv` ficam na
+  `jornadas/renner_login` ou `~/jmeter/renner_login`. O `.jmx` e o `massa.csv` ficam na
   raiz dela; catálogo, correlações, plano e o resto da geração ficam em `<pasta>/_geracao/`.
   Se `<pasta>` já tiver um script, pergunte se pode sobrescrever ou use outro nome.
 
@@ -83,8 +84,8 @@ Leia `<pasta>/_geracao/catalog.md`. Ele mostra estrutura e nomes de chaves, sem 
   extractor manual numa requisição que já está no plano.
 
 ### 4. Escrever `<pasta>/_geracao/plan.json`
-Use [plan.example.json](plan.example.json) como modelo. As regras de nome e agrupamento
-estão em [boas-praticas.md](boas-praticas.md) e o Python as aplica sozinho. Você só fornece
+Use [plan.example.json](${CLAUDE_SKILL_DIR}/plan.example.json) como modelo. As regras de nome e agrupamento
+estão em [boas-praticas.md](${CLAUDE_SKILL_DIR}/boas-praticas.md) e o Python as aplica sozinho. Você só fornece
 as peças:
 
 | Campo | O que colocar |
@@ -126,11 +127,13 @@ edite o .jmx à mão**: mude o plano e rode o build de novo.
 - Riscos que você notou, por exemplo:
   - captcha (`g-recaptcha-response`) ou device fingerprint fixo;
   - tokens com expiração gravados como constante;
-  - cookies anti-bot pré-carregados, que expiram (ver `antigo/docs/HAR_COM_COOKIES.md`);
+  - cookies anti-bot pré-carregados, que expiram (ver [har-com-cookies.md](${CLAUDE_SKILL_DIR}/har-com-cookies.md));
   - avisos do validate que ficaram;
   - limitações conhecidas do build:
     - o build troca o valor onde ele aparece, inclusive dentro de listas (`skuList=a,b,${sku}`);
       listas montadas a partir de um array da resposta precisam de ajuste manual;
     - o slug do produto em headers `Referer` continua literal.
+- Se a pasta atual for um repositório git e `jornadas/` não estiver no `.gitignore`, avise: o
+  `.jmx` e o `massa.csv` têm credenciais. Sugira adicionar `jornadas/` ao `.gitignore`.
 - Como rodar um smoke test, contra um ambiente onde isso seja permitido:
   `jmeter -n -t "<pasta>/<nome>.jmx" -l "<pasta>/_geracao/smoke.jtl" -JVUs=1 -JRampup=1 -Jduration=30`

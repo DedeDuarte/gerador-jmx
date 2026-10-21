@@ -1,7 +1,7 @@
 """Linha de comando: prepare | show | match | validate | build.
 
 Liga as etapas do pipeline (har_reader → correlations → catalog → plan → jmx_builder). Todos os comandos,
-menos o prepare, recebem a pasta do script jornadas/scripts/<proj>, que lembra o HAR e os filtros usados.
+menos o prepare, recebem a pasta do script jornadas/<proj>, que lembra o HAR e os filtros usados.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from harjmx import catalog, correlations, har_reader, jmx_builder, plan
 from harjmx.correlations import Candidato
 from harjmx.har_reader import Entry
 
-# --- Pasta do script jornadas/scripts/<proj> ----------------------------------------------
+# --- Pasta do script jornadas/<proj> ------------------------------------------------------
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = REPO_ROOT / "config"
@@ -32,7 +32,7 @@ class Session:
 
 
 class Workspace:
-    """Pasta jornadas/scripts/<proj>: o .jmx e o CSV na raiz (o que o JMeter usa) e, em
+    """Pasta jornadas/<proj>: o .jmx e o CSV na raiz (o que o JMeter usa) e, em
     _geracao/, os resíduos da geração: session.json (HAR + filtros), catálogo, correlações e plano."""
 
     def __init__(self, path: str | Path):
@@ -235,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
 
     sp = sub.add_parser("prepare", help="filtra o HAR e gera catalog.md + correlations.json")
     sp.add_argument("har")
-    sp.add_argument("--out", required=True, help="pasta do script, ex: jornadas/scripts/renner_login")
+    sp.add_argument("--out", required=True, help="pasta do script, ex: jornadas/renner_login")
     sp.add_argument("--host", action="append", help="domínio extra da aplicação (repetível)")
     sp.add_argument("--include-static", action="store_true")
     sp.add_argument("--match", action="append", help="endpoint informado pelo usuário: 'POST /login'")

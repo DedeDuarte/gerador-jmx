@@ -41,7 +41,7 @@ Se o HAR for gravado sem cookies, o JMeter receberá redirects HTTP 302 da prote
 
 1. **Clique direito** na grid da aba Network
 2. Selecione **"Save all as HAR with content"**
-3. Salve em `test/nome_do_fluxo.har`
+3. Salve em `jornadas/hars/nome_do_fluxo.har`
 
 ### Passo 5: Verificar se o HAR Contém Cookies
 
@@ -64,20 +64,22 @@ Abra o HAR em um editor de texto e procure:
 **✅ BOM**: `"cookies": [...]` com itens  
 **❌ RUIM**: `"cookies": []` vazio
 
-## Passo 6: Gerar JMeter Plan com o Agente
+## Passo 6: Gerar o JMeter com o agente
 
-```bash
-python agente.py test/fluxo_com_cookies.har --analyze --jmx -o reports/resultado.json
+```
+/gerar-jmeter fluxo_com_cookies.har "login, ver produto"
 ```
 
-O agente irá:
-1. ✅ Extrair cookies do HAR e popular o `CookieManager` do JMeter
-2. ✅ Extrair headers de navegador (User-Agent, sec-ch-ua*, Sec-Fetch-*)
-3. ✅ Adicionar um `HeaderManager` global "Browser Headers (Anti-Bot)"
+O build:
+1. ✅ Pré-carrega no `HTTP Cookie Manager` os cookies que o navegador já tinha antes da jornada
+   (`cookies.pre_popular` em `config/defaults.yaml`). Os recebidos via Set-Cookie durante a
+   jornada ficam com o Cookie Manager.
+2. ✅ Põe os headers iguais em todas as requisições (User-Agent, sec-ch-ua*, Sec-Fetch-*) no
+   `HTTP Header Manager - Global`.
 
 ## Verificação do JMX Gerado
 
-Abra `reports/resultado.jmx` e procure:
+Abra o `.jmx` em `jornadas/<proj>/` e procure:
 
 ### 1. CookieManager com Cookies Iniciais
 
@@ -95,12 +97,14 @@ Abra `reports/resultado.jmx` e procure:
 ### 2. HeaderManager com Headers de Navegador
 
 ```xml
-<HeaderManager testname="Browser Headers (Anti-Bot)">
+<HeaderManager testname="HTTP Header Manager - Global">
   <collectionProp name="HeaderManager.headers">
-    <elementProp name="User-Agent" elementType="Header">
+    <elementProp name="" elementType="Header">
+      <stringProp name="Header.name">User-Agent</stringProp>
       <stringProp name="Header.value">Mozilla/5.0 ...</stringProp>
     </elementProp>
-    <elementProp name="sec-ch-ua" elementType="Header">
+    <elementProp name="" elementType="Header">
+      <stringProp name="Header.name">sec-ch-ua</stringProp>
       <stringProp name="Header.value">"Chromium";v="152", ...</stringProp>
     </elementProp>
   </collectionProp>
@@ -134,7 +138,7 @@ Alguns WAFs vinculam cookies ao IP de origem.
 - Dados pessoais (endereço, telefone)
 
 **Boas práticas:**
-1. ❌ **NÃO commitar HAR/CSV no Git** - Já está no `.gitignore`
+1. ❌ **NÃO commitar HAR, JMX e CSV no Git** - No repo Agente_JMeter já estão no `.gitignore`; em outros repos, ignore `jornadas/`
 2. ✅ Use **dados de teste fictícios** quando possível
 3. ✅ Grave HAR em **ambiente de homologação** se disponível
 4. ✅ **Delete HAR files** após gerar o JMX
@@ -162,11 +166,11 @@ Alguns WAFs vinculam cookies ao IP de origem.
 ```bash
 # 1. Gravar HAR com cookies no Chrome (manual)
 # 2. Verificar se HAR tem cookies
-grep '"cookies": \[' test/meu_fluxo.har
+grep '"cookies": \[' jornadas/hars/meu_fluxo.har
 
-# 3. Gerar JMeter plan
-python agente.py test/meu_fluxo.har --analyze --jmx -o reports/meu_teste.json
+# 3. Gerar o JMeter (no Claude Code)
+/gerar-jmeter jornadas/hars/meu_fluxo.har "login, ver produto"
 
 # 4. Executar teste
-jmeter -n -t reports/meu_teste.jmx -l results.jtl
+jmeter -n -t jornadas/meu_fluxo/meu_fluxo.jmx -l jornadas/meu_fluxo/_geracao/smoke.jtl
 ```

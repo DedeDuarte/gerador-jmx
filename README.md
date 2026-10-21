@@ -4,8 +4,10 @@ Gera scripts JMeter (`.jmx`) a partir de um `.har` e de uma descrição da jorna
 ("login, ver produto, adicionar à sacola").
 
 ## Como rodar
+Instala o pacote e liga a skill em qualquer pasta (ajuste o caminho do repo):
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install -e "C:\.code\Agente_JMeter"
+New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\skills\gerar-jmeter" -Target "C:\.code\Agente_JMeter\.claude\skills\gerar-jmeter"
 ```
 Para gerar um script pelo Claude Code ou Codex, veja o **[GUIA.md](GUIA.md)**.
 
@@ -31,11 +33,11 @@ HAR ──prepare──> catalog.md ──(IA)──> plan.json ──validate�
 ### Comandos
 | Comando | O que faz |
 |---|---|
-| `prepare <har> --out jornadas/scripts/<proj> [--host dominio] [--match "POST /login"]` | Filtra o HAR e gera `catalog.md` e `correlations.json` |
-| `show jornadas/scripts/<proj> <id>... [--redact]` | Mostra requisição e resposta completas (`--redact` mascara senhas e tokens) |
-| `match jornadas/scripts/<proj> "POST /login"` | Casa endpoints com IDs; mostra também as requisições excluídas pelos filtros |
-| `validate jornadas/scripts/<proj>` | Confere o `plan.json` contra o HAR |
-| `build jornadas/scripts/<proj>` | Valida e gera o `.jmx` (mais o `massa.csv`, se houver variáveis de CSV) |
+| `prepare <har> --out jornadas/<proj> [--host dominio] [--match "POST /login"]` | Filtra o HAR e gera `catalog.md` e `correlations.json` |
+| `show jornadas/<proj> <id>... [--redact]` | Mostra requisição e resposta completas (`--redact` mascara senhas e tokens) |
+| `match jornadas/<proj> "POST /login"` | Casa endpoints com IDs; mostra também as requisições excluídas pelos filtros |
+| `validate jornadas/<proj>` | Confere o `plan.json` contra o HAR |
+| `build jornadas/<proj>` | Valida e gera o `.jmx` (mais o `massa.csv`, se houver variáveis de CSV) |
 
 O formato do `plan.json` está em [src/harjmx/plan.py](src/harjmx/plan.py). Há um exemplo
 completo em [.claude/skills/gerar-jmeter/plan.example.json](.claude/skills/gerar-jmeter/plan.example.json).
@@ -64,16 +66,15 @@ Os padrões (thread group, think time, headers descartados) ficam em
 ## Estrutura
 
 ### Jornadas
-Entradas e saídas ficam em `jornadas/`, fora do git (HARs e scripts têm credenciais e cookies).
-A skill aceita outro destino para os scripts (`/gerar-jmeter <har> "<jornada>" ~/jmeter`):
+A skill cria `jornadas/` na pasta onde o Claude foi aberto (aqui no repo, fora do git: HARs e
+scripts têm credenciais e cookies). Aceita outro destino (`/gerar-jmeter <har> "<jornada>" ~/jmeter`):
 ```
 jornadas/
-├── hars/                        # HARs mais usados (opcional: o HAR pode vir de qualquer lugar)
-└── scripts/
-    └── <proj>/                  # uma pasta por script gerado
-        ├── <nome_teste>.jmx     # o que vai para o JMeter
-        ├── massa.csv            # precisa ficar ao lado do .jmx
-        └── _geracao/            # resíduos da geração: session.json, catalog.md, correlations.json, plan.json
+├── hars/                    # HARs mais usados (opcional: o HAR pode vir de qualquer lugar)
+└── <proj>/                  # uma pasta por script gerado
+    ├── <nome_teste>.jmx     # o que vai para o JMeter
+    ├── massa.csv            # precisa ficar ao lado do .jmx
+    └── _geracao/            # resíduos da geração: session.json, catalog.md, correlations.json, plan.json
 ```
 
 ### Código
@@ -92,6 +93,7 @@ src/harjmx/
 
 ## Testes
 ```powershell
+python -m pip install -e ".[dev]"   # uma vez: instala o pytest
 python -m pytest            # unitários + golden do JMX (< 1 s)
 python -m pytest -m e2e     # roda o JMX no JMeter real contra um mock local (~20 s, precisa do JMeter)
 ```

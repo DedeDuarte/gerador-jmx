@@ -2,8 +2,11 @@
 
 ## 1. Instalar (uma vez)
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install -e "C:\.code\Agente_JMeter"
+New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\skills\gerar-jmeter" -Target "C:\.code\Agente_JMeter\.claude\skills\gerar-jmeter"
 ```
+Depois disso a skill funciona em qualquer pasta, no Claude Code do terminal, do VS Code e na aba Code do app.
+Não funciona no chat normal nem no Cowork.
 
 ## 2. Gerar o script
 **Claude Code**
@@ -13,7 +16,7 @@ python -m pip install -e ".[dev]"
 
 **Codex**
 ```
-Siga .claude/skills/gerar-jmeter/SKILL.md com o HAR jornadas/hars/teste.har
+Siga C:\.code\Agente_JMeter\.claude\skills\gerar-jmeter\SKILL.md com o HAR jornadas/hars/teste.har
 e a jornada "login, ver produto, adicionar à sacola".
 ```
 
@@ -27,7 +30,7 @@ Para salvar em outro lugar, passe a pasta no fim (relativa, absoluta ou com `~`)
 Para ajustar, peça na mesma conversa: *"tira a requisição do datalayer"*, *"renomeia a etapa 2 para Sacola"*.
 
 ## 3. Resultado
-Em `jornadas/scripts/<proj>/` (ou `<pasta informada>/<proj>/`):
+Em `jornadas/<proj>/` da pasta onde você abriu o Claude (ou `<pasta informada>/<proj>/`):
 ```
 <proj>/
 ├── <nome>.jmx      # abra no JMeter
