@@ -1,6 +1,6 @@
 """Linha de comando: prepare | show | match | validate | build.
 
-Liga as etapas do pipeline (har → correlation → catalog → plan → jmx). Todos os comandos,
+Liga as etapas do pipeline (har_reader → correlations → catalog → plan → jmx_builder). Todos os comandos,
 menos o prepare, recebem a pasta do script jornadas/scripts/<proj>, que lembra o HAR e os filtros usados.
 """
 from __future__ import annotations
@@ -13,9 +13,9 @@ import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from harjmx import catalog, correlation, har, jmx, plan
-from harjmx.correlation import Candidato
-from harjmx.har import Entry
+from harjmx import catalog, correlations, har_reader, jmx_builder, plan
+from harjmx.correlations import Candidato
+from harjmx.har_reader import Entry
 
 # --- Pasta do script jornadas/scripts/<proj> ----------------------------------------------
 
@@ -60,14 +60,14 @@ class Workspace:
     def load(self) -> tuple[list[Entry], list[Entry]]:
         """(todas as entries, entries mantidas pelos filtros)."""
         s = self.session()
-        all_entries, self.main_host = har.load(s.har)
-        cfg = har.FilterConfig(
+        all_entries, self.main_host = har_reader.load(s.har)
+        cfg = har_reader.FilterConfig(
             main_host=self.main_host,
             extra_domains=s.extra_domains,
-            denylist=har.load_denylist(Path(s.denylist)),
+            denylist=har_reader.load_denylist(Path(s.denylist)),
             include_static=s.include_static,
         )
-        kept, self.excluded = har.split(all_entries, cfg)
+        kept, self.excluded = har_reader.split(all_entries, cfg)
         return all_entries, kept
 
     def correlations(self) -> list[Candidato]:
@@ -84,7 +84,7 @@ def cmd_prepare(args) -> int:
     ws.save_session(Session(har=str(Path(args.har).resolve()), extra_domains=args.host or [],
                             include_static=args.include_static))
     all_entries, kept = ws.load()
-    cands, sem_origem = correlation.detect(kept)
+    cands, sem_origem = correlations.detect(kept)
     ws.correlations_file.write_text(json.dumps([c.to_dict() for c in cands], indent=2, ensure_ascii=False),
                                     encoding="utf-8")
     md, data = catalog.build(kept, all_entries, ws.excluded, ws.main_host, cands, sem_origem,
@@ -105,7 +105,7 @@ def _match_lines(entries, excluded: dict[int, str], specs: list[str]) -> str:
     lines = []
     for spec in specs:
         try:
-            ids = har.match(entries, spec)
+            ids = har_reader.match(entries, spec)
         except ValueError as err:
             lines.append(f"- `{spec}`: {err}")
             continue
@@ -209,8 +209,8 @@ def cmd_build(args) -> int:
     if not res.ok:
         print("Build cancelado: corrija os erros do plano.")
         return 1
-    config = jmx.load_config(Path(args.config))
-    result = jmx.build(res.plan, res.variaveis, by_id, config)
+    config = jmx_builder.load_config(Path(args.config))
+    result = jmx_builder.build(res.plan, res.variaveis, by_id, config)
     out = Path(args.out) if args.out else ws.path / f"{res.plan.nome_teste}.jmx"
     out.write_text(result.jmx, encoding="utf-8")
     print(f"JMX: {out}")

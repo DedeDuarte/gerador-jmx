@@ -9,8 +9,8 @@ import re
 from collections import Counter
 from typing import Any
 
-from harjmx.correlation import Candidato, SemOrigem
-from harjmx.har import Entry
+from harjmx.correlations import Candidato, SemOrigem
+from harjmx.har_reader import Entry
 
 _COMMON_HEADERS = {
     "accept", "accept-language", "accept-encoding", "cache-control", "connection", "content-length",

@@ -20,13 +20,13 @@ dependencies = [
 dev = ["pytest>=8"]
 
 [project.scripts]
-harjmx = "harjmx.cli:main"
+harjmx = "harjmx.commands:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-harjmx = ["templates.xml.j2"]
+harjmx = ["jmx_templates.xml.j2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

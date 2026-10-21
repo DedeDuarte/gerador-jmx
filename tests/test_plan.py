@@ -2,7 +2,7 @@ import copy
 
 import pytest
 
-from harjmx.cli import Workspace
+from harjmx.commands import Workspace
 from harjmx.plan import validate
 
 
@@ -59,7 +59,7 @@ def test_valor_de_when_response_was_not_recorded(tmp_path, mini_plan):
     import json
 
     from conftest import FIXTURES
-    from harjmx.cli import main
+    from harjmx.commands import main
 
     har = json.loads((FIXTURES / "mini_login.har").read_text(encoding="utf-8"))
     del har["log"]["entries"][6]["response"]["content"]["text"]      # #7 sem corpo

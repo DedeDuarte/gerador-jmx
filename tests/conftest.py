@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from harjmx.cli import Workspace, main
+from harjmx.commands import Workspace, main
 
 FIXTURES = Path(__file__).parent / "fixtures"
 GOLDEN = Path(__file__).parent / "golden"

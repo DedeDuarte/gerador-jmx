@@ -1,7 +1,7 @@
 import re
 
-from harjmx import correlation
-from harjmx.cli import Workspace
+from harjmx import correlations
+from harjmx.commands import Workspace
 
 
 def test_detects_all_dynamic_values(mini_work):
@@ -29,17 +29,17 @@ def test_values_sent_by_client_are_not_correlations(mini_work):
 
 
 def test_is_strong():
-    assert correlation.is_strong("-8978932749661934233")
-    assert correlation.is_strong("tok_a1b2c3")
-    assert not correlation.is_strong("12345")
-    assert not correlation.is_strong("profile")
-    assert not correlation.is_strong("2026-10-20")
-    assert not correlation.is_strong("1.23.0")
+    assert correlations.is_strong("-8978932749661934233")
+    assert correlations.is_strong("tok_a1b2c3")
+    assert not correlations.is_strong("12345")
+    assert not correlations.is_strong("profile")
+    assert not correlations.is_strong("2026-10-20")
+    assert not correlations.is_strong("1.23.0")
 
 
 def test_build_regex_finds_exact_value():
     html = '<input type="hidden" name="a" value="x"><input type="hidden" name="csrf" value="k9j8h7g6">'
-    pattern, match = correlation.build_regex(html, "k9j8h7g6")
+    pattern, match = correlations.build_regex(html, "k9j8h7g6")
     assert match == 1
     assert re.search(pattern, html).group(1) == "k9j8h7g6"
     assert pattern.startswith('name="csrf"')
@@ -47,7 +47,7 @@ def test_build_regex_finds_exact_value():
 
 def test_build_regex_uses_occurrence_instead_of_long_context():
     text = '[{"product_id":"111111-A","x":1},{"product_id":"222222-B","x":2}]'
-    pattern, match = correlation.build_regex(text, "222222")
+    pattern, match = correlations.build_regex(text, "222222")
     assert pattern == '"product_id":"([^\\-\\r\\n]+)'
     assert match == 2
     assert [m.group(1) for m in re.finditer(pattern, text)][match - 1] == "222222"

@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from urllib.parse import unquote
 
 from harjmx import jsonpath
-from harjmx.har import Entry, path_segments
+from harjmx.har_reader import Entry, path_segments
 
 _IGNORED_REQUEST_HEADERS = {"cookie", "host", "content-length", "referer", "origin", "user-agent",
                             "accept", "accept-language", "accept-encoding", "connection", "content-type",

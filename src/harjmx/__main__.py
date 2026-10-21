@@ -1,5 +1,5 @@
 import sys
 
-from harjmx.cli import main
+from harjmx.commands import main
 
 sys.exit(main())

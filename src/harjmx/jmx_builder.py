@@ -5,7 +5,7 @@ Plano validado + HAR → texto do .jmx e a linha do CSV de massa. Em quatro pass
      valores dinâmicos trocados por ${variavel}.
   2. Nomes: nomenclatura das boas práticas (C:\\.code\\Caderno\\Boas-praticas_jmeter).
   3. Estrutura: requisição solta, Simple Controller ou Simple Controller agrupado.
-  4. XML: cada elemento é renderizado por uma macro de templates.xml.j2.
+  4. XML: cada elemento é renderizado por uma macro de jmx_templates.xml.j2.
 
 `build(plan, variaveis, by_id, config)` → `BuildResult`.
 """
@@ -22,7 +22,7 @@ from urllib.parse import quote
 import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-from harjmx.har import Entry
+from harjmx.har_reader import Entry
 from harjmx.plan import Assertion, Extractor, Plan, Variavel
 
 
@@ -304,7 +304,7 @@ def xml_value(value: Any) -> str:
 
 TPL = Environment(loader=FileSystemLoader(Path(__file__).parent), autoescape=False, finalize=xml_value,
                   trim_blocks=True, lstrip_blocks=True,
-                  undefined=StrictUndefined).get_template("templates.xml.j2").module
+                  undefined=StrictUndefined).get_template("jmx_templates.xml.j2").module
 
 
 @dataclass

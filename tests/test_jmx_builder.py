@@ -3,8 +3,8 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from harjmx.cli import Workspace, main
-from harjmx.jmx import Controller, arrange, endpoint_name, request_name, xml_value
+from harjmx.commands import Workspace, main
+from harjmx.jmx_builder import Controller, arrange, endpoint_name, request_name, xml_value
 from harjmx.plan import Plan
 
 from conftest import GOLDEN

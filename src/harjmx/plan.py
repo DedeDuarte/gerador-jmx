@@ -19,8 +19,8 @@ from pydantic import (BaseModel, ConfigDict, Field, StringConstraints, Validatio
                       model_validator)
 
 from harjmx import jsonpath
-from harjmx.correlation import Candidato
-from harjmx.har import Entry, field_value, request_texts
+from harjmx.correlations import Candidato
+from harjmx.har_reader import Entry, field_value, request_texts
 
 # --- Contrato do plan.json ----------------------------------------------------------------
 

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 import mock_server
-from harjmx.cli import Workspace, main
+from harjmx.commands import Workspace, main
 
 pytestmark = pytest.mark.e2e
 

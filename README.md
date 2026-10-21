@@ -137,14 +137,14 @@ jornadas/
 Um arquivo por etapa do pipeline, lidos nesta ordem:
 ```
 src/harjmx/
-├── har.py              # ETAPA 1: lê o HAR (Entry com ID fixo), filtra e casa "POST /login" → IDs
-├── correlation.py      # ETAPA 1: valor da resposta X reaparece na requisição Y
-├── catalog.py          # ETAPA 1: catalog.md, o que a IA lê (sem valores)
-├── plan.py             # ETAPA 2: contrato do plan.json + validação com erros acionáveis
-├── jmx.py              # ETAPA 3: hidratação (${var}) → nomes → estrutura → XML
-├── templates.xml.j2    # XML de cada elemento JMeter (edite aqui para mudar o estilo)
-├── cli.py              # comandos prepare | show | match | validate | build + pasta do script
-└── jsonpath.py         # utilitário de JSONPath usado pelas etapas
+├── har_reader.py        # ETAPA 1: lê o HAR (Entry com ID fixo), filtra e casa "POST /login" → IDs
+├── correlations.py      # ETAPA 1: valor da resposta X reaparece na requisição Y
+├── catalog.py           # ETAPA 1: catalog.md, o que a IA lê (sem valores)
+├── plan.py              # ETAPA 2: contrato do plan.json + validação com erros acionáveis
+├── jmx_builder.py       # ETAPA 3: hidratação (${var}) → nomes → estrutura → XML
+├── jmx_templates.xml.j2 # XML de cada elemento JMeter (edite aqui para mudar o estilo)
+├── commands.py          # comandos prepare | show | match | validate | build + pasta do script
+└── jsonpath.py          # utilitário de JSONPath usado pelas etapas
 ```
 
 ## Testes
