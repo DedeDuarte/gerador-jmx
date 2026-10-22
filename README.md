@@ -12,32 +12,35 @@ New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\skills\gerar-jmeter"
 Para gerar um script pelo Claude Code ou Codex, veja o **[GUIA.md](GUIA.md)**.
 
 ## Como funciona
-O **Python** faz tudo que é determinístico:
-- filtrar o HAR;
-- detectar correlações;
-- aplicar a nomenclatura das boas práticas;
-- montar o XML.
+A **IA** só faz uma coisa: lê o catálogo (requisições agrupadas em ações do usuário, com horário
+e página) e diz qual requisição é a principal de cada passo pedido, na ordem pedida:
 
-A **IA** decide a jornada:
-- quais requisições entram e em que ordem;
-- o nome de cada etapa;
-- que valores viram variáveis.
+```json
+{"nome_teste": "renner_sacola", "etapas": [{"nome": "Ver Jaquetas", "requisicoes": [50]}]}
+```
 
-A IA nunca copia dados do HAR. Ela escreve um `plan.json` que referencia as requisições por
-ID, e o Python busca headers, bodies e credenciais reais direto no HAR.
+O **Python** faz todo o resto, sem a IA:
+- filtra o HAR e monta o catálogo por ações;
+- resolve as correlações contra o plano: a origem de cada valor é a resposta **mais próxima
+  antes** do uso;
+- inclui sozinho as requisições de que os passos dependem (a origem de um valor que não está no
+  plano, e o login) e explica cada uma no relatório;
+- manda para o CSV o que o usuário digitou (login, senha, CEP, cupom...);
+- põe uma asserção do status em cada requisição, aplica a nomenclatura e monta o XML;
+- reporta os riscos: valores que ficaram fixos, ações que acumulam estado, anti-bot sem cookies.
 
 ```
-HAR ──prepare──> catalog.md ──(IA)──> plan.json ──validate──> build ──> .jmx + massa.csv
+HAR ──prepare──> catálogo ──(IA)──> plan.json ──build──> .jmx + massa.csv + relatório
 ```
 
 ### Comandos
 | Comando | O que faz |
 |---|---|
-| `prepare <har> --out jornadas/<proj> [--host dominio] [--match "POST /login"]` | Filtra o HAR e gera `catalog.md` e `correlations.json` |
+| `prepare <har> --out jornadas/<proj> [--host dominio] [--match "POST /login"]` | Filtra o HAR, grava e imprime o catálogo por ações |
 | `show jornadas/<proj> <id>... [--redact]` | Mostra requisição e resposta completas (`--redact` mascara senhas e tokens) |
 | `match jornadas/<proj> "POST /login"` | Casa endpoints com IDs; mostra também as requisições excluídas pelos filtros |
-| `validate jornadas/<proj>` | Confere o `plan.json` contra o HAR |
-| `build jornadas/<proj>` | Valida e gera o `.jmx` (mais o `massa.csv`, se houver variáveis de CSV) |
+| `validate jornadas/<proj>` | Confere o `plan.json` e mostra o relatório, sem gerar arquivos |
+| `build jornadas/<proj>` | Valida, gera o `.jmx` (mais o `massa.csv`) e mostra o relatório com a árvore |
 
 O formato do `plan.json` está em [src/harjmx/plan.py](src/harjmx/plan.py). Há um exemplo
 completo em [.claude/skills/gerar-jmeter/plan.example.json](.claude/skills/gerar-jmeter/plan.example.json).
@@ -45,18 +48,17 @@ completo em [.claude/skills/gerar-jmeter/plan.example.json](.claude/skills/gerar
 ### O que o JMX gerado tem
 - **Nomes e agrupamento** conforme `boas-praticas_jmeter.md`:
   - requisições como `1.0 POST - /api/login - Autenticar Usuário`;
-  - Simple Controller `N - Nome` para etapas com vários passos;
-  - Simple Controller agrupado `3-4 - Nome` para juntar etapas;
-  - extractors `JSON Extractor - var`, com default `var_ERR`.
+  - Simple Controller `N - Nome` para etapas com vários passos (o passo pedido e o que ele precisa);
+  - extractors `JSON Extractor - var`, com default `var_ERR`;
+  - `Assertion - Status 200` em cada requisição.
 - **Esqueleto** igual ao `renner_sap_uy.jmx`:
   - Thread Group por propriedades (`-JVUs`, `-JRampup`, `-Jduration`);
   - User Defined Variables com os hosts;
   - Cookie Manager e Cache Manager;
   - Header Manager global com os headers comuns e um por sampler só com o que difere;
   - think time.
-- **Correlações** detectadas automaticamente: JSON Extractor, ou Regex em body ou headers.
-  Opcionalmente, item aleatório de uma lista (`"aleatorio": true`).
-- **Massa de dados** em CSV (login, senha…) com os valores reais do HAR.
+- **Correlações** automáticas: JSON Extractor, ou Regex em body ou headers.
+- **Massa de dados** em CSV (login, senha, CEP, cupom…) com os valores reais do HAR.
 - **Cookies anti-bot** que o navegador já tinha, pré-carregados no Cookie Manager.
 
 Os padrões (thread group, think time, headers descartados) ficam em
@@ -74,7 +76,7 @@ jornadas/
 └── <proj>/                  # uma pasta por script gerado
     ├── <nome_teste>.jmx     # o que vai para o JMeter
     ├── massa.csv            # precisa ficar ao lado do .jmx
-    └── _geracao/            # resíduos da geração: session.json, catalog.md, correlations.json, plan.json
+    └── _geracao/            # resíduos da geração: session.json, catalog.md, plan.json
 ```
 
 ### Código
@@ -82,9 +84,9 @@ Um arquivo por etapa do pipeline, lidos nesta ordem:
 ```
 src/harjmx/
 ├── har_reader.py        # ETAPA 1: lê o HAR (Entry com ID fixo), filtra e casa "POST /login" → IDs
-├── correlations.py      # ETAPA 1: valor da resposta X reaparece na requisição Y
-├── catalog.py           # ETAPA 1: catalog.md, o que a IA lê (sem valores)
-├── plan.py              # ETAPA 2: contrato do plan.json + validação com erros acionáveis
+├── catalog.py           # ETAPA 1: catálogo por ações do usuário, o que a IA lê (sem valores)
+├── plan.py              # ETAPA 2: contrato do plan.json (passos → IDs), validação e relatório
+├── correlations.py      # ETAPA 3: correlações, dependências, login e CSV resolvidos contra o plano
 ├── jmx_builder.py       # ETAPA 3: hidratação (${var}) → nomes → estrutura → XML
 ├── jmx_templates/       # um .xml por elemento JMeter (edite aqui para mudar o estilo)
 ├── commands.py          # comandos prepare | show | match | validate | build + pasta do script

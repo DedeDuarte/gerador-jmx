@@ -1,81 +1,83 @@
 import copy
+import json
 
 import pytest
 
-from harjmx.commands import Workspace
+from harjmx.commands import Workspace, main
 from harjmx.plan import validate
+
+from conftest import FIXTURES
 
 
 def _run(work, plan):
     ws = Workspace(work)
     _, kept = ws.load()
-    return validate(plan, kept, ws.excluded, ws.correlations())
+    return validate(plan, kept, ws.excluded), {e.id: e for e in kept}
 
 
 def test_reference_plan_is_valid(mini_work, mini_plan):
-    res = _run(mini_work, mini_plan)
-    assert res.ok, res.report()
-    assert {v.nome: v.valor for v in res.variaveis}["senha"] == "Senha@123"
-
-
-def _broken(plan, mutate):
-    p = copy.deepcopy(plan)
-    mutate(p)
-    return p
+    res, _ = _run(mini_work, mini_plan)
+    assert res.ok, res.erros
+    seq = res.resolucao.sequencia()
+    assert [p.har_id for p in seq] == [1, 5, 7, 9]
+    assert [(p.har_id, p.motivo) for p in res.resolucao.automaticas()] == [(1, "origem de csrfToken (usado em #5)")]
+    assert seq[0].descricao == "Obter Csrf Token"
 
 
 @pytest.mark.parametrize("mutate, expected", [
-    (lambda p: p["requisicoes"][0].update(har_id=99), "#99 não está no catálogo: id inexistente"),
-    (lambda p: p["requisicoes"][0].update(har_id=4), "excluída como 'terceiro' (rode o prepare com --host"),
-    (lambda p: p["requisicoes"][1].update(passo=2), "etapa 1: passos devem ser 0..1"),
-    (lambda p: p["etapas"].append({"numero": 5, "nome": "X"}), "os números devem ser 1..4"),
-    (lambda p: p["grupos"].append({"de": 1, "ate": 2, "nome": "Y"}), "sobrepõe outro grupo"),
-    (lambda p: (p["requisicoes"].pop(0), p["requisicoes"][0].update(passo=0)), "correlação C1: a origem #1 não está no plano"),
-    (lambda p: p["correlacoes"].append({"id": "C9"}), "correlação C9 não existe"),
-    (lambda p: p["parametros"][0].update(local="form.nao_existe"), "'form.nao_existe' não existe em #5"),
-    (lambda p: p["parametros"][0].update(variavel="userId"), "variável 'userId' definida duas vezes"),
-    (lambda p: p["requisicoes"][2].setdefault("extractors", []).append(
-        {"variavel": "x", "tipo": "json", "expressao": "$.nada"}), "`$.nada` não encontra nada"),
-    (lambda p: p["requisicoes"][0].update(endpoint_nome="/login?x=1"), "endpoint_nome deve começar"),
-    (lambda p: p["requisicoes"][0].update(campo_errado=1), "Extra inputs are not permitted"),
+    (lambda p: p["etapas"][0].update(requisicoes=[99]), "#99 não está no catálogo: id inexistente"),
+    (lambda p: p["etapas"][0].update(requisicoes=[2]), "excluída como 'estatico' (rode o prepare com --include-static)"),
+    (lambda p: p["etapas"][0].update(requisicoes=[4]), "excluída como 'terceiro' (rode o prepare com --host"),
+    (lambda p: p["etapas"][1].update(requisicoes=[5]), "#5 aparece duas vezes"),
+    (lambda p: p["etapas"][1].update(requisicoes=[]), "etapas[1].requisicoes"),
+    (lambda p: p["etapas"][0].update(descricao="x"), "Extra inputs"),
+    (lambda p: p.update(nome_teste="com espaço"), "nome_teste"),
 ])
 def test_errors_are_actionable(mini_work, mini_plan, mutate, expected):
-    p = _broken(mini_plan, mutate)
-    res = _run(mini_work, p)
+    p = copy.deepcopy(mini_plan)
+    mutate(p)
+    res, _ = _run(mini_work, p)
     assert not res.ok
-    assert any(expected in e for e in res.erros), res.report()
+    assert any(expected in e for e in res.erros), res.erros
 
 
+def test_login_is_added_when_not_asked(mini_work, mini_plan):
+    p = copy.deepcopy(mini_plan)
+    del p["etapas"][0]                                   # o usuário não pediu o login
+    res, _ = _run(mini_work, p)
+    assert res.ok, res.erros
+    etapas = res.resolucao.etapas
+    assert [e.nome for e in etapas] == ["Login", "Listar Pedidos", "Confirmar Pedido"]
+    assert [x.har_id for x in etapas[0].passos] == [1, 5]
+    assert "login" in etapas[0].passos[1].motivo
 
-def test_aleatorio_generalizes_jsonpath(mini_work, mini_plan):
-    mini_plan["correlacoes"][3] = {"id": "C4", "aleatorio": True}
-    res = _run(mini_work, mini_plan)
-    assert res.ok, res.report()
-    order = next(v for v in res.variaveis if v.nome == "orderId")
-    assert (order.extractor.expressao, order.extractor.match) == ("$.orders[*].orderId", 0)
+
+def test_typed_values_become_csv(mini_work, mini_plan):
+    res, _ = _run(mini_work, mini_plan)
+    csv = {v.nome: v.valor for v in res.resolucao.variaveis if v.tipo == "csv"}
+    assert csv == {"username": "ana@teste.com", "password": "Senha@123"}
 
 
-def test_valor_de_when_response_was_not_recorded(tmp_path, mini_plan):
-    import json
+def test_report_lists_what_python_decided(mini_work, mini_plan):
+    res, by_id = _run(mini_work, mini_plan)
+    report = res.report(by_id)
+    assert "OK: 4 requisições (3 pedidas + 1 automáticas), 4 correlações, CSV: username, password" in report
+    assert "#1 GET /login — origem de csrfToken" in report
+    assert "orderId ← #7 json `$.orders[0].orderId`" in report
+    assert "/api/orders/ORD-77881234/confirm muda estado" not in report      # 'confirm' não é add/new/...
 
-    from conftest import FIXTURES
-    from harjmx.commands import main
 
+def test_value_without_recorded_response_stays_fixed(tmp_path, mini_plan):
     har = json.loads((FIXTURES / "mini_login.har").read_text(encoding="utf-8"))
     del har["log"]["entries"][6]["response"]["content"]["text"]      # #7 sem corpo
     har_path = tmp_path / "sem_corpo.har"
     har_path.write_text(json.dumps(har), encoding="utf-8")
     work = tmp_path / "w"
     assert main(["prepare", str(har_path), "--out", str(work)]) == 0
-    assert "respostas sem corpo gravado" in Workspace(work).catalog_md.read_text(encoding="utf-8")
+    assert "respostas sem corpo gravado (#7)" in Workspace(work).catalog_md.read_text(encoding="utf-8")
 
-    mini_plan["correlacoes"] = [c for c in mini_plan["correlacoes"] if c["id"] != "C4"]
-    extractor = {"variavel": "orderId", "tipo": "json", "expressao": "$.orders[0].orderId"}
-    mini_plan["requisicoes"][2]["extractors"] = [extractor]
-    res = _run(work, mini_plan)
-    assert any("não foi gravada no HAR" in e for e in res.erros), res.report()
-
-    extractor["valor_de"] = "9:path.2"
-    res = _run(work, mini_plan)
-    assert res.ok, res.report()
-    assert next(v for v in res.variaveis if v.nome == "orderId").valor == "ORD-77881234"
+    res, by_id = _run(work, mini_plan)
+    assert res.ok, res.erros
+    assert "orderId" not in {v.nome for v in res.resolucao.variaveis}
+    assert any(f.har_id == 9 and f.motivo == "sem origem no HAR" for f in res.resolucao.fixos)
+    assert "valor fixo em #9" in res.report(by_id)

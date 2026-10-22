@@ -10,6 +10,7 @@ import base64
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Any, Literal
@@ -63,6 +64,7 @@ class Entry:
     cookies: list[tuple[str, str]]
     body: Body | None
     response: Response
+    started: float | None = None             # startedDateTime em segundos (epoch)
 
     def header(self, name: str) -> str | None:
         name = name.lower()
@@ -189,7 +191,15 @@ def _to_entry(idx: int, raw: dict) -> Entry:
             text=resp_text,
             json=_try_json(resp_text),
         ),
+        started=_timestamp(raw.get("startedDateTime")),
     )
+
+
+def _timestamp(value: str | None) -> float | None:
+    try:
+        return datetime.fromisoformat(value).timestamp() if value else None
+    except ValueError:
+        return None
 
 
 def _main_host(pages: list[dict], entries: list[Entry]) -> str:

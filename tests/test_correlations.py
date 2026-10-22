@@ -1,31 +1,71 @@
+import json
 import re
 
-from harjmx import correlations
+from harjmx import correlations, har_reader
 from harjmx.commands import Workspace
 
 
-def test_detects_all_dynamic_values(mini_work):
-    cands = {c.variavel: c for c in Workspace(mini_work).correlations()}
-    assert set(cands) == {"csrfToken", "userId", "accessToken", "orderId"}
-
-    csrf = cands["csrfToken"]
-    assert (csrf.origem.har_id, csrf.origem.tipo, csrf.origem.campo) == (1, "regex", "body")
-    assert [(u.har_id, u.local) for u in csrf.usos] == [(5, "form.csrf_token")]
-
-    token = cands["accessToken"]
-    assert (token.origem.tipo, token.origem.expressao) == ("json", "$.access_token")
-    assert [(u.har_id, u.local) for u in token.usos] == [(7, "header.Authorization"),
-                                                        (9, "header.Authorization")]
-
-    order = cands["orderId"]
-    assert order.origem.expressao == "$.orders[0].orderId"
-    assert {u.local for u in order.usos} == {"path.2", "body.$.orderId"}
+def _har(tmp_path, *entries):
+    """HAR mínimo: cada entry é (método, path, corpo enviado | None, resposta json | None)."""
+    out = []
+    for i, (method, path, sent, resp) in enumerate(entries):
+        req = {"method": method, "url": f"https://app.test{path}", "headers": [], "queryString": []}
+        if sent is not None:
+            req["postData"] = {"mimeType": "application/json", "text": json.dumps(sent)}
+        content = {"mimeType": "application/json", "text": json.dumps(resp)} if resp is not None else {}
+        out.append({"startedDateTime": f"2026-10-20T12:00:{i:02d}.000Z", "request": req,
+                    "response": {"status": 200, "headers": [], "content": content}})
+    path = tmp_path / "t.har"
+    path.write_text(json.dumps({"log": {"entries": out}}), encoding="utf-8")
+    return har_reader.load(path)[0]
 
 
-def test_values_sent_by_client_are_not_correlations(mini_work):
-    valores = {c.valor for c in Workspace(mini_work).correlations()}
-    assert "ana@teste.com" not in valores          # vem do usuário, não de uma resposta
-    assert "3.2.1" not in valores
+def test_reference_plan_correlations(mini_work, mini_plan):
+    ws = Workspace(mini_work)
+    _, kept = ws.load()
+    res = correlations.resolve([(e["nome"], e["requisicoes"]) for e in mini_plan["etapas"]], kept)
+    var = {v.nome: v for v in res.variaveis if v.tipo == "extractor"}
+    assert set(var) == {"csrfToken", "userId", "accessToken", "orderId"}
+    csrf = var["csrfToken"]
+    assert (csrf.origem_har_id, csrf.extractor.tipo, csrf.extractor.campo) == (1, "regex", "body")
+    assert (var["accessToken"].origem_har_id, var["accessToken"].extractor.expressao) == (5, "$.access_token")
+    assert var["orderId"].extractor.expressao == "$.orders[0].orderId"
+    assert "ana@teste.com" not in {v.valor for v in var.values()}    # vem do usuário: vai para o CSV
+
+
+def test_nearest_origin_wins(tmp_path):
+    kept = _har(tmp_path,
+                ("GET", "/lista", None, {"tok": "t0k3n12345"}),          # #1 prefetch
+                ("GET", "/outra", None, {}),                             # #2
+                ("GET", "/lista", None, {"tok": "t0k3n12345"}),          # #3 a visita de verdade
+                ("POST", "/usa", {"tok": "t0k3n12345"}, {}))             # #4
+    res = correlations.resolve([("Ver", [2]), ("Usar", [4])], kept)
+    assert [p.har_id for p in res.sequencia()] == [2, 3, 4]           # entrou a mais próxima, não a #1
+    res = correlations.resolve([("Ver", [3]), ("Usar", [4])], kept)
+    assert res.automaticas() == [] and res.variaveis[0].origem_har_id == 3
+
+
+def test_origin_after_first_use(tmp_path):
+    kept = _har(tmp_path,
+                ("POST", "/antes", {"s": "s3ss10n999"}, None),           # #1 usa sem origem gravada
+                ("GET", "/sessao", None, {"n": "s3ss10n999"}),           # #2 responde o valor
+                ("POST", "/depois", {"s": "s3ss10n999"}, {}))            # #3
+    res = correlations.resolve([("Depois", [3])], kept)
+    assert [p.har_id for p in res.sequencia()] == [2, 3]
+    assert res.variaveis[0].extractor.expressao == "$.n"
+    res = correlations.resolve([("Antes", [1]), ("Depois", [3])], kept)
+    assert [p.har_id for p in res.sequencia()] == [1, 2, 3]
+    # #1 continua mandando o literal (e isso vira risco); #3 já usa a variável
+    assert [(f.har_id, f.motivo) for f in res.fixos] == [(1, "a origem #2 vem depois")]
+
+
+def test_echo_is_not_origin(tmp_path):
+    kept = _har(tmp_path,
+                ("POST", "/eco", {"d": "dev1c3abc9"}, {"d": "dev1c3abc9"}),   # devolve o que recebeu
+                ("POST", "/usa", {"d": "dev1c3abc9"}, {}))
+    res = correlations.resolve([("Usar", [2])], kept)
+    assert res.automaticas() == [] and res.variaveis == []
+    assert res.fixos[0].motivo == "sem origem no HAR"
 
 
 def test_is_strong():
@@ -35,6 +75,8 @@ def test_is_strong():
     assert not correlations.is_strong("profile")
     assert not correlations.is_strong("2026-10-20")
     assert not correlations.is_strong("1.23.0")
+    assert not correlations.is_strong("actionNewAddress")          # palavra/camelCase sem dígito
+    assert not correlations.is_strong("rennerBrasilDesktop")
 
 
 def test_build_regex_finds_exact_value():

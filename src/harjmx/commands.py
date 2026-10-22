@@ -1,7 +1,7 @@
 """Linha de comando: prepare | show | match | validate | build.
 
-Liga as etapas do pipeline (har_reader → correlations → catalog → plan → jmx_builder). Todos os comandos,
-menos o prepare, recebem a pasta do script jornadas/<proj>, que lembra o HAR e os filtros usados.
+Liga as etapas do pipeline (har_reader → catalog → plan → correlations → jmx_builder). Todos os
+comandos, menos o prepare, recebem a pasta do script jornadas/<proj>, que lembra o HAR e os filtros usados.
 """
 from __future__ import annotations
 
@@ -13,8 +13,7 @@ import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from harjmx import catalog, correlations, har_reader, jmx_builder, plan
-from harjmx.correlations import Candidato
+from harjmx import catalog, har_reader, jmx_builder, plan
 from harjmx.har_reader import Entry
 
 # --- Pasta do script jornadas/<proj> ------------------------------------------------------
@@ -33,7 +32,7 @@ class Session:
 
 class Workspace:
     """Pasta jornadas/<proj>: o .jmx e o CSV na raiz (o que o JMeter usa) e, em
-    _geracao/, os resíduos da geração: session.json (HAR + filtros), catálogo, correlações e plano."""
+    _geracao/, os resíduos da geração: session.json (HAR + filtros), catálogo e plano."""
 
     def __init__(self, path: str | Path):
         self.path = Path(path).expanduser()
@@ -44,7 +43,6 @@ class Workspace:
     session_file = property(lambda self: self.gen / "session.json")
     catalog_md = property(lambda self: self.gen / "catalog.md")
     catalog_json = property(lambda self: self.gen / "catalog.json")
-    correlations_file = property(lambda self: self.gen / "correlations.json")
     plan_file = property(lambda self: self.gen / "plan.json")
 
     def save_session(self, session: Session) -> None:
@@ -70,12 +68,6 @@ class Workspace:
         kept, self.excluded = har_reader.split(all_entries, cfg)
         return all_entries, kept
 
-    def correlations(self) -> list[Candidato]:
-        if not self.correlations_file.exists():
-            return []
-        data = json.loads(self.correlations_file.read_text(encoding="utf-8"))
-        return [Candidato.from_dict(d) for d in data]
-
 
 # --- Comandos ----------------------------------------------------------------------------
 
@@ -84,18 +76,15 @@ def cmd_prepare(args) -> int:
     ws.save_session(Session(har=str(Path(args.har).expanduser().resolve()), extra_domains=args.host or [],
                             include_static=args.include_static))
     all_entries, kept = ws.load()
-    cands, sem_origem = correlations.detect(kept)
-    ws.correlations_file.write_text(json.dumps([c.to_dict() for c in cands], indent=2, ensure_ascii=False),
-                                    encoding="utf-8")
-    md, data = catalog.build(kept, all_entries, ws.excluded, ws.main_host, cands, sem_origem,
-                             Path(args.har).name)
+    md, data = catalog.build(kept, all_entries, ws.excluded, ws.main_host, Path(args.har).name)
     if args.match:
         md += ("\n## Endpoints informados pelo usuário\n\n"
                + _match_lines(all_entries, ws.excluded, args.match) + "\n")
     ws.catalog_md.write_text(md, encoding="utf-8")
     ws.catalog_json.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"{len(kept)} de {len(all_entries)} requisições mantidas, {len(cands)} correlações candidatas.")
-    print(f"Catálogo: {ws.catalog_md}")
+    print(md)
+    print(f"Pasta do script: {ws.path.resolve()}")
+    print(f"Plano: {ws.plan_file.resolve()}")
     return 0
 
 
@@ -191,31 +180,36 @@ def _cut(text: str, limit: int) -> str:
 def _validated(ws: Workspace, plan_path: Path):
     _, kept = ws.load()
     raw = plan.load_plan(plan_path)
-    res = plan.validate(raw, kept, ws.excluded, ws.correlations())
-    return res, {e.id: e for e in kept}
+    res = plan.validate(raw, kept, ws.excluded)
+    by_id = {e.id: e for e in kept}
+    if res.ok:
+        res.avisos += catalog.alertas(kept)
+    return res, by_id
 
 
 def cmd_validate(args) -> int:
     ws = Workspace(args.script)
-    res, _ = _validated(ws, Path(args.plan).expanduser() if args.plan else ws.plan_file)
-    print(res.report())
+    res, by_id = _validated(ws, Path(args.plan).expanduser() if args.plan else ws.plan_file)
+    print(res.report(by_id))
     return 0 if res.ok else 1
 
 
 def cmd_build(args) -> int:
     ws = Workspace(args.script)
     res, by_id = _validated(ws, Path(args.plan).expanduser() if args.plan else ws.plan_file)
-    print(res.report())
+    print(res.report(by_id))
     if not res.ok:
         print("Build cancelado: corrija os erros do plano.")
         return 1
     config = jmx_builder.load_config(Path(args.config))
-    result = jmx_builder.build(res.plan, res.variaveis, by_id, config)
+    result = jmx_builder.build(res.plan.nome_teste, res.resolucao, by_id, config)
     out = Path(args.out).expanduser() if args.out else ws.path / f"{res.plan.nome_teste}.jmx"
     out.write_text(result.jmx, encoding="utf-8")
+    print("Árvore:")
+    print("\n".join("  " + line for line in result.arvore))
     print(f"JMX: {out}")
     if result.csv_header:
-        csv_path = out.parent / res.plan.csv_arquivo
+        csv_path = out.parent / jmx_builder.CSV_ARQUIVO
         with open(csv_path, "w", encoding="utf-8", newline="") as f:
             w = csv.writer(f)
             w.writerow(result.csv_header)
@@ -233,7 +227,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="harjmx", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    sp = sub.add_parser("prepare", help="filtra o HAR e gera catalog.md + correlations.json")
+    sp = sub.add_parser("prepare", help="filtra o HAR, gera o catálogo por ações e o imprime")
     sp.add_argument("har")
     sp.add_argument("--out", required=True, help="pasta do script, ex: jornadas/renner_login")
     sp.add_argument("--host", action="append", help="domínio extra da aplicação (repetível)")
@@ -254,8 +248,8 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("specs", nargs="+")
     sp.set_defaults(func=cmd_match)
 
-    for name, func, helptext in (("validate", cmd_validate, "valida o plan.json"),
-                                 ("build", cmd_build, "valida e gera o .jmx")):
+    for name, func, helptext in (("validate", cmd_validate, "valida o plan.json e mostra o relatório"),
+                                 ("build", cmd_build, "valida, gera o .jmx e mostra o relatório")):
         sp = sub.add_parser(name, help=helptext)
         sp.add_argument("script")
         sp.add_argument("--plan", help="padrão: <script>/_geracao/plan.json")

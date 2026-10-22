@@ -1,100 +1,12 @@
 {
-  "nome_teste": "mini_login",
+  "nome_teste": "renner_jaqueta_checkout",
   "etapas": [
-    {
-      "numero": 1,
-      "nome": "Login"
-    },
-    {
-      "numero": 2,
-      "nome": "Pedidos"
-    },
-    {
-      "numero": 3,
-      "nome": "Confirmação"
-    }
-  ],
-  "grupos": [
-    {
-      "de": 2,
-      "ate": 3,
-      "nome": "Pedido"
-    }
-  ],
-  "requisicoes": [
-    {
-      "har_id": 1,
-      "etapa": 1,
-      "passo": 0,
-      "descricao": "Abrir Página Login"
-    },
-    {
-      "har_id": 5,
-      "etapa": 1,
-      "passo": 1,
-      "descricao": "Autenticar Usuário",
-      "assertions": [
-        {
-          "tipo": "status",
-          "esperado": "200"
-        }
-      ]
-    },
-    {
-      "har_id": 7,
-      "etapa": 2,
-      "passo": 0,
-      "descricao": "Listar Pedidos",
-      "assertions": [
-        {
-          "tipo": "status",
-          "esperado": "200"
-        }
-      ]
-    },
-    {
-      "har_id": 9,
-      "etapa": 3,
-      "passo": 0,
-      "descricao": "Confirmar Pedido",
-      "assertions": [
-        {
-          "tipo": "status",
-          "esperado": "200"
-        },
-        {
-          "tipo": "json_existe",
-          "esperado": "$.status"
-        }
-      ]
-    }
-  ],
-  "correlacoes": [
-    {
-      "id": "C1"
-    },
-    {
-      "id": "C2"
-    },
-    {
-      "id": "C3"
-    },
-    {
-      "id": "C4"
-    }
-  ],
-  "parametros": [
-    {
-      "variavel": "usuario",
-      "har_id": 5,
-      "local": "form.username",
-      "destino": "csv"
-    },
-    {
-      "variavel": "senha",
-      "har_id": 5,
-      "local": "form.password",
-      "destino": "csv"
-    }
+    {"nome": "Ver Jaquetas", "requisicoes": [50]},
+    {"nome": "Abrir Jaqueta", "requisicoes": [116]},
+    {"nome": "Adicionar Jaqueta à Sacola", "requisicoes": [186]},
+    {"nome": "Ir para Sacola", "requisicoes": [335]},
+    {"nome": "Adicionar Cupom", "requisicoes": [391]},
+    {"nome": "Ir para Pagamento", "requisicoes": [414]},
+    {"nome": "Adicionar Novo Endereço", "requisicoes": [450]}
   ]
 }
