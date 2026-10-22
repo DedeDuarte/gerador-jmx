@@ -1,0 +1,56 @@
+@startwbs 09-jmx-gerado
+!include _estilo.iuml
+title Árvore do JMX gerado para o mini_login
+<style>
+wbsDiagram {
+  node {
+    BackgroundColor #E8F0FB
+    LineColor #3B5B8C
+    RoundCorner 8
+  }
+  arrow {
+    LineColor #7A8CA8
+  }
+  .cfg {
+    BackgroundColor #FFF6D5
+    LineColor #B7950B
+  }
+  .ctrl {
+    BackgroundColor #EDE7F6
+    LineColor #6A4C93
+  }
+  .filho {
+    BackgroundColor #FFFFFF
+  }
+  .auto {
+    BackgroundColor #E6F4EA
+    LineColor #2E7D32
+  }
+}
+</style>
+* Test Plan: mini_login
+** User Defined Variables\nhost = 127.0.0.1 <<cfg>>
+** HTTP Cookie Manager\n_abck pré-carregado <<cfg>>
+** HTTP Cache Manager <<cfg>>
+** Thread Group: Grupo de Usuários\n-JVUs, -JRampup, -Jduration
+*** CSV Data Set - massa.csv\nusername, password <<cfg>>
+*** HTTP Header Manager - Global\nAccept, User-Agent <<cfg>>
+*** Think Time\n1000 ms + até 2000 ms <<cfg>>
+*** 1 - Autenticar Usuário\n(Simple Controller: etapa com 2 passos) <<ctrl>>
+**** 1.0 GET - /login - Obter Csrf Token\n(automática: origem do csrfToken) <<auto>>
+***** Regex Extractor - csrfToken <<filho>>
+***** Assertion - Status 200 <<filho>>
+**** 1.1 POST - /api/login - Autenticar Usuário
+***** HTTP Header Manager\nContent-Type <<filho>>
+***** JSON Extractor - userId <<filho>>
+***** JSON Extractor - accessToken <<filho>>
+***** Assertion - Status 200 <<filho>>
+*** 2.0 GET - /api/users/{userId}/orders\n- Listar Pedidos
+**** HTTP Header Manager\nAuthorization: Bearer ${accessToken} <<filho>>
+**** JSON Extractor - orderId <<filho>>
+**** Assertion - Status 200 <<filho>>
+*** 3.0 POST - /api/orders/{orderId}/confirm\n- Confirmar Pedido
+**** HTTP Header Manager\nAuthorization, Content-Type <<filho>>
+**** Assertion - Status 200 <<filho>>
+** View Results Tree\n(desabilitado) <<cfg>>
+@endwbs

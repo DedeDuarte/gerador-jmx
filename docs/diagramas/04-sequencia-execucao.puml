@@ -1,0 +1,61 @@
+@startuml 04-sequencia-execucao
+!include _estilo.iuml
+title Uma execução de /gerar-jmeter, do pedido ao .jmx
+hide stereotype
+autonumber
+
+actor "Usuário" as U
+participant "Claude Code\n(skill)" as C <<IA>>
+participant "commands" as CMD
+participant "har_reader" as HR
+participant "catalog" as CAT
+participant "plan" as PL
+participant "correlations" as CO
+participant "jmx_builder" as JB
+database "jornadas/<proj>" as FS
+
+U -> C : /gerar-jmeter teste.har "login, listar pedidos, confirmar"
+C -> C : escolhe <proj> (snake_case do HAR\nou da jornada)
+
+== 1. prepare ==
+C -> CMD : python -m harjmx prepare teste.har\n--out jornadas/<proj>
+CMD -> FS : save_session() → _geracao/session.json
+CMD -> HR : load(har)
+HR --> CMD : entries, main_host
+CMD -> HR : split(entries, FilterConfig)
+HR --> CMD : mantidas, excluídas {id: motivo}
+CMD -> CAT : build(mantidas, todas, excluídas, ...)
+CAT --> CMD : markdown + json
+CMD -> FS : catalog.md, catalog.json
+CMD --> C : imprime o catálogo
+
+== 2. plano: o único trabalho da IA ==
+C -> C : cada passo pedido → ID da requisição\nprincipal (o ★ é a dica)
+opt o catálogo não basta
+  C -> CMD : show <proj> <id> --redact\nmatch <proj> "POST /x"
+  CMD --> C : requisição e resposta completas
+end
+C -> FS : Write _geracao/plan.json
+
+== 3. build ==
+loop até não ter ERRO
+  C -> CMD : python -m harjmx build jornadas/<proj>
+  CMD -> FS : lê session.json
+  CMD -> HR : load + split\n(o HAR é sempre a fonte da verdade)
+  CMD -> PL : validate(plan.json, mantidas, excluídas)
+  PL -> CO : resolve(etapas, mantidas)
+  CO --> PL : Resolucao
+  PL --> CMD : Resultado
+  alt erros no plano
+    CMD --> C : ERRO: ... Build cancelado
+    C -> FS : corrige plan.json
+  else ok
+    CMD -> JB : build(nome_teste, resolucao, by_id, defaults.yaml)
+    JB --> CMD : BuildResult (jmx, csv, árvore)
+    CMD -> FS : <nome_teste>.jmx, massa.csv
+    CMD --> C : relatório + árvore + caminhos
+  end
+end
+
+C --> U : relatório (automáticas, correlações,\nCSV, riscos) + comando de smoke test
+@enduml

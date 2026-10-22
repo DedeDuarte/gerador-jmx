@@ -1,0 +1,51 @@
+@startuml 08-build
+!include _estilo.iuml
+title build: da Resolucao ao .jmx
+
+start
+:commands.cmd_build → _validated (diagrama 07);
+if (Resultado.ok?) then (não)
+  #FDECEA:Build cancelado;
+  stop
+endif
+:load_config(config/defaults.yaml);
+
+partition "1. hydrate + 2. nomes: um Sampler por Passo" {
+  :Substituter com as variáveis em escopo (origem antes do passo):
+  valor real → ${nome}, também nas versões URL-encoded;
+  :GET/HEAD sem body → query em args
+  outros → query no path, form em args, json/raw em raw_body;
+  :headers do HAR, menos headers.drop do defaults.yaml;
+  :extractors das variáveis cuja origem é este passo;
+  :asserção do status 2xx gravado no HAR;
+  :3xx com extractor de header → não segue o redirect;
+  :request_name: "N.P MÉTODO - endpoint - descrição"
+  endpoint_name: ${var} → {var}, IDs soltos → {id};
+}
+
+:_host_vars: host mais usado = ${host}, os outros = ${host_<rótulo>};
+:_split_headers: headers iguais em todos os samplers
+→ HTTP Header Manager - Global;
+:_initial_cookies: cookies enviados antes de qualquer Set-Cookie
+→ pré-carregados no Cookie Manager (anti-bot);
+
+partition "3. arrange" {
+  if (etapa com um passo?) then (sim)
+    :sampler solto "N.0 ...";
+  else (vários)
+    :Simple Controller "N - Nome"
+    com os samplers N.0, N.1, ...;
+  endif
+}
+
+partition "4. XML" {
+  :render(elemento, campos) → jmx_templates/<elemento>.xml
+  (Jinja2; todo {{ }} passa por xml_value);
+  :Node(xml, filhos).render → cada elemento seguido do seu <hashTree>;
+  :ET.fromstring: garante XML bem formado antes de gravar;
+}
+:BuildResult;
+:commands grava <nome_teste>.jmx e massa.csv
+e imprime árvore, hosts e cookies;
+stop
+@enduml

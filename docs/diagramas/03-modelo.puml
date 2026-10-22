@@ -1,0 +1,136 @@
+@startuml 03-modelo
+!include _estilo.iuml
+title Modelo de dados: a forma do dado em cada etapa
+hide empty members
+hide circle
+
+package "commands" {
+  class Workspace {
+    path: jornadas/<proj>
+    gen: _geracao/
+    session_file, catalog_md, plan_file
+    load() → (todas, mantidas)
+  }
+  class Session {
+    har: caminho absoluto
+    extra_domains: --host
+    include_static
+    denylist
+  }
+  Workspace ..> Session : session.json
+}
+
+package "har_reader — ETAPA 1" {
+  class Entry {
+    id: int «posição 1-based no HAR»
+    method, url, host, port, path
+    query, headers, cookies
+    body: Body?
+    response: Response
+    started: epoch
+  }
+  class Body {
+    kind: json | form | raw
+    text, json, params
+  }
+  class Response {
+    status, mime, headers
+    text, json
+  }
+  Entry *-- "0..1" Body
+  Entry *-- "1" Response
+}
+
+package "plan — ETAPA 2" {
+  class Plan <<pydantic>> {
+    nome_teste
+    etapas: list[Etapa]
+  }
+  class Etapa <<pydantic>> {
+    nome: "Ver Jaquetas"
+    requisicoes: list[int]
+  }
+  class Resultado {
+    erros, avisos
+    ok
+    report(by_id)
+  }
+  Plan *-- "1..*" Etapa
+  Resultado o-- Plan
+}
+
+package "correlations — ETAPA 3" {
+  class Resolucao {
+    avisos
+    sequencia() → list[Passo]
+    automaticas() → list[Passo]
+  }
+  class EtapaFinal {
+    nome
+  }
+  class Passo {
+    har_id
+    descricao
+    motivo «vazio = pedido no plano»
+  }
+  class Variavel {
+    nome, valor
+    tipo: extractor | csv | global
+    origem_har_id
+    primeiro_uso
+    em_escopo(har_id, pos)
+  }
+  class Extractor {
+    variavel
+    tipo: json | regex
+    expressao
+    campo: body | headers
+    match: ocorrência
+  }
+  class Fixo {
+    har_id, local, motivo
+  }
+  Resolucao *-- "1..*" EtapaFinal
+  EtapaFinal *-- "1..*" Passo
+  Resolucao *-- "*" Variavel
+  Resolucao *-- "*" Fixo
+  Variavel o-- "0..1" Extractor
+}
+
+package "jmx_builder — ETAPA 3" {
+  class Sampler {
+    har_id, nome
+    method, protocol, host, port, path
+    args, raw_body, headers
+    extractors
+    status «asserção»
+    follow_redirects
+  }
+  class Controller {
+    nome: "N - Nome"
+    filhos: list[Sampler]
+  }
+  class Node {
+    xml
+    children: list[Node]
+    render(depth)
+  }
+  class BuildResult {
+    jmx
+    csv_header, csv_row
+    hosts, global_headers
+    cookies, arvore
+  }
+  Controller o-- "2..*" Sampler
+  Node o-- "*" Node
+}
+
+Workspace ..> Entry : load()
+Etapa ..> Entry : IDs
+Resultado o-- "0..1" Resolucao
+Passo ..> Entry : har_id
+Sampler ..> Passo : hydrate()
+Sampler o-- "*" Extractor
+Node ..> Sampler : _sampler_node()
+BuildResult ..> Node : jmx = XML da árvore
+@enduml

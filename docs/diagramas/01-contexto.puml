@@ -1,0 +1,58 @@
+@startuml 01-contexto
+!include _estilo.iuml
+title Visão geral: quem faz o quê
+left to right direction
+hide stereotype
+
+actor "Usuário" as user
+
+rectangle "Claude Code" <<IA>> {
+  component "skill gerar-jmeter\n(SKILL.md, model: sonnet)" <<IA>> as skill
+}
+
+file "gravação .har\n(DevTools)" as har
+
+rectangle "Python — pacote harjmx" <<python>> {
+  component "python -m harjmx\nprepare | build\n(show | match | validate)" as cli
+  folder "config/" as config {
+    file "defaults.yaml" as defaults
+    file "denylist.txt" as deny
+  }
+}
+
+folder "jornadas/<proj>/" as proj {
+  file "_geracao/catalog.md" as cat
+  file "_geracao/plan.json" as plan
+  file "<nome_teste>.jmx" as jmx
+  file "massa.csv" as csv
+}
+
+node "JMeter" as jmeter
+
+user --> skill : /gerar-jmeter <har> 'jornada'
+skill --> cli : 1. prepare
+har --> cli
+deny --> cli
+cli --> cat : grava
+cat --> skill : lê
+skill --> plan : 2. escreve\n(só IDs)
+skill --> cli : 3. build
+plan --> cli
+defaults --> cli
+cli --> jmx : grava
+cli --> csv : grava
+jmx --> jmeter
+csv --> jmeter
+
+note bottom of skill
+  A IA só decide **qual requisição**
+  é cada passo da jornada.
+end note
+
+note bottom of cli
+  O Python faz o resto, sem IA:
+  filtros, catálogo, correlações,
+  dependências, login, CSV,
+  asserções, nomes e o XML.
+end note
+@enduml

@@ -1,0 +1,62 @@
+' Estilo comum dos diagramas: !include _estilo.iuml
+' Cores por papel: IA = roxo, Python = azul, arquivos = amarelo, JMeter = verde.
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam roundCorner 10
+skinparam padding 2
+skinparam titleFontSize 18
+skinparam titleFontStyle bold
+
+skinparam ArrowColor #4A5568
+skinparam ArrowFontColor #2D3748
+skinparam ArrowFontSize 12
+
+skinparam NoteBackgroundColor #FFF8DC
+skinparam NoteBorderColor #C9B458
+
+skinparam ComponentBackgroundColor #E8F0FB
+skinparam ComponentBorderColor #3B5B8C
+skinparam ComponentBackgroundColor<<IA>> #EDE7F6
+skinparam ComponentBorderColor<<IA>> #6A4C93
+skinparam RectangleBackgroundColor<<IA>> #EDE7F6
+skinparam RectangleBorderColor<<IA>> #6A4C93
+skinparam RectangleBackgroundColor<<python>> #E8F0FB
+skinparam RectangleBorderColor<<python>> #3B5B8C
+skinparam FileBackgroundColor #FFF6D5
+skinparam FileBorderColor #B7950B
+skinparam FolderBackgroundColor #FFFBEA
+skinparam FolderBorderColor #B7950B
+skinparam NodeBackgroundColor #E6F4EA
+skinparam NodeBorderColor #2E7D32
+skinparam PackageBackgroundColor #FAFBFD
+skinparam PackageBorderColor #7A8CA8
+
+skinparam ClassBackgroundColor #F5F8FD
+skinparam ClassBorderColor #3B5B8C
+skinparam ClassHeaderBackgroundColor #E8F0FB
+skinparam ClassAttributeIconSize 0
+skinparam StereotypeCBackgroundColor #A9C1E0
+
+skinparam ActivityBackgroundColor #E8F0FB
+skinparam ActivityBorderColor #3B5B8C
+skinparam ActivityDiamondBackgroundColor #FFFFFF
+skinparam ActivityDiamondBorderColor #3B5B8C
+skinparam PartitionBorderColor #7A8CA8
+skinparam PartitionBackgroundColor #FAFBFD
+
+skinparam SequenceLifeLineBorderColor #7A8CA8
+skinparam SequenceGroupBorderColor #7A8CA8
+skinparam SequenceGroupBackgroundColor #EEF2F7
+skinparam SequenceDividerBackgroundColor #EEF2F7
+skinparam SequenceDividerBorderColor #7A8CA8
+skinparam ParticipantBackgroundColor #E8F0FB
+skinparam ParticipantBorderColor #3B5B8C
+skinparam ParticipantBackgroundColor<<IA>> #EDE7F6
+skinparam ParticipantBorderColor<<IA>> #6A4C93
+skinparam ActorBackgroundColor #FFFFFF
+skinparam ActorBorderColor #2D3748
+skinparam DatabaseBackgroundColor #FFF6D5
+skinparam DatabaseBorderColor #B7950B

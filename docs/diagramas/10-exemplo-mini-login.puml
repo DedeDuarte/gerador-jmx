@@ -1,0 +1,44 @@
+@startuml 10-exemplo-mini-login
+!include _estilo.iuml
+title Execução real: resolve() no mini_login.har com o plano [5], [7], [9]
+hide stereotype
+
+participant "massa.csv" as CSV <<arquivo>>
+participant "~#1 GET /login\n(HTML)" as R1
+participant "~#5 POST /api/login" as R5
+participant "~#7 GET /api/users/\n4242001/orders" as R7
+participant "~#9 POST /api/orders/\nORD-77881234/confirm" as R9
+
+skinparam ParticipantBackgroundColor<<arquivo>> #FFF6D5
+skinparam ParticipantBorderColor<<arquivo>> #B7950B
+
+note over R1, R9
+  **prepare**: das 9 entries do HAR ficam 4. Saem #2 app.js e #8 logo.png (estatico),
+  ~#3 google-analytics (denylist), #4 cdn.terceiro.com (terceiro) e #6 OPTIONS (preflight).
+  **plan.json** (escrito pela IA): Autenticar Usuário = [5], Listar Pedidos = [7], Confirmar Pedido = [9].
+  As setas abaixo vão da **resposta de origem** para a **requisição que usa o valor**.
+end note
+
+== passo ~#5 (etapa 1) ==
+CSV -> R5 : form.username, form.password\n_is_input → ${username}, ${password}
+R5 -> R5 : form.csrf_token = csrf9f8e7d6c5b4a\nnenhuma resposta da sequência antes de #5 tem esse valor
+R1 -> R5 : o HTML de #1 tem o valor (fora do plano)\nRegex Extractor - csrfToken → ${csrfToken}
+note over R1 #EDE7F6
+  ~#1 entra sozinho na etapa 1 como
+  "Obter Csrf Token" e é processado antes;
+  depois #5 volta e já acha ${csrfToken}.
+end note
+
+== passo ~#7 (etapa 2) ==
+R5 -> R7 : path.2 = 4242001\nJSON $.user.id → ${userId}
+R5 -> R7 : header Authorization "Bearer tok_a1b2…"\no pedaço do token: JSON $.access_token → ${accessToken}
+
+== passo ~#9 (etapa 3) ==
+R7 -> R9 : path.2 e body.$.orderId = ORD-77881234\nJSON $.orders[0].orderId → ${orderId}
+R5 -> R9 : Bearer ${accessToken} (já é variável)
+
+note over CSV, R9
+  **Resultado**: 4 requisições (3 pedidas + 1 automática), 4 correlações, CSV: username, password.
+  Etapa 1 tem 2 passos → vira o Simple Controller "1 - Autenticar Usuário"; as outras viram samplers 2.0 e 3.0.
+end note
+@enduml

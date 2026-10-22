@@ -1,0 +1,54 @@
+@startuml 05-arquivos
+!include _estilo.iuml
+title Fluxo dos arquivos: quem grava e quem lê
+hide stereotype
+
+file "teste.har\n(qualquer pasta)" as har
+
+folder "config/ (no repo)" {
+  file "denylist.txt" as deny
+  file "defaults.yaml" as defaults
+}
+
+rectangle "prepare" <<python>> as prepare
+rectangle "Claude Code" <<IA>> as claude
+rectangle "build\n(validate = só o relatório)" <<python>> as build
+node "JMeter" as jmeter
+
+folder "jornadas/<proj>/" {
+  folder "_geracao/  (resíduos da geração)" {
+    file "session.json\ncaminho do HAR + filtros" as session
+    file "catalog.md\no que a IA lê" as catmd
+    file "catalog.json\no mesmo, em dados" as catjson
+    file "plan.json\npassos → IDs" as plan
+    file "smoke.jtl" as jtl
+  }
+  file "<nome_teste>.jmx" as jmx
+  file "massa.csv\nao lado do .jmx" as csv
+}
+
+har --> prepare
+deny --> prepare
+prepare --> session
+prepare --> catmd
+prepare --> catjson
+catmd --> claude
+claude --> plan : Write
+session --> build : de onde\nrelê o HAR
+har ..> build
+plan --> build
+defaults --> build
+build --> jmx
+build --> csv
+jmx --> jmeter
+csv --> jmeter
+jmeter --> jtl : smoke test
+
+note right of build
+  Todo comando depois do prepare
+  relê o HAR pelo caminho gravado
+  no session.json. Os IDs são a
+  posição da entry no HAR, então o
+  plan.json continua valendo.
+end note
+@enduml

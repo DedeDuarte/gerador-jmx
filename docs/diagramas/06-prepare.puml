@@ -1,0 +1,57 @@
+@startuml 06-prepare
+!include _estilo.iuml
+title prepare: do HAR ao catálogo
+
+start
+:commands.cmd_prepare;
+if (a pasta já tem um .jmx\ne não veio --force?) then (sim)
+  :ERRO: use outro nome ou --force;
+  stop
+endif
+:save_session → _geracao/session.json;
+
+partition "har_reader.load" {
+  :lê log.entries (utf-8-sig);
+  :_to_entry: cada entry vira uma Entry
+  id = posição 1-based (nunca muda)
+  body json | form | raw; resposta base64 decodificada;
+  :_main_host: host da 1ª página (ou do 1º HTML);
+}
+
+partition "har_reader.split → exclusion_reason (1º motivo que casar)" {
+  while (para cada Entry) is (próxima)
+    if (não é http(s)?) then (sim)
+      :nao-http;
+    elseif (OPTIONS?) then (sim)
+      :preflight;
+    elseif (host na denylist.txt?) then (sim)
+      :denylist;
+    elseif (fora do domínio base\ne dos --host?) then (sim)
+      :terceiro;
+    elseif (estático (extensão ou MIME)\ne sem --include-static?) then (sim)
+      :estatico;
+    else (não)
+      #E6F4EA:mantida;
+    endif
+  endwhile (fim)
+}
+
+partition "catalog.build (sem valores: só estrutura e nomes de chaves)" {
+  :actions: bloco novo quando há pausa > 1,5 s
+  ou quando muda a página (documento ou Referer);
+  :em cada ação: colapsa repetições (×N, "repete #id")
+  e junta a telemetria numa linha à parte;
+  :principal ★ (dica para a IA):
+  1º POST/PUT/DELETE com verbo de ação no path,
+  senão a que traz a página de destino,
+  senão a maior resposta 2xx;
+  :alertas: HAR sem HTML, respostas sem corpo,
+  anti-bot sem cookies;
+}
+if (veio --match?) then (sim)
+  :_match_lines: "POST /login" → IDs
+  (as excluídas aparecem com o motivo);
+endif
+:grava catalog.md + catalog.json e imprime o catálogo;
+stop
+@enduml

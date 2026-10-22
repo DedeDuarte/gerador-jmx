@@ -9,7 +9,7 @@ Instala o pacote e liga a skill em qualquer pasta (ajuste o caminho do repo):
 python -m pip install -e "C:\.code\Agente_JMeter"
 New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\skills\gerar-jmeter" -Target "C:\.code\Agente_JMeter\.claude\skills\gerar-jmeter"
 ```
-Para gerar um script pelo Claude Code ou Codex, veja o **[GUIA.md](GUIA.md)**.
+Para gerar um script pelo Claude Code ou Codex, veja o **[GUIA.md](docs/GUIA.md)**.
 
 ## Como funciona
 A **IA** só faz uma coisa: lê o catálogo (requisições agrupadas em ações do usuário, com horário
@@ -32,6 +32,9 @@ O **Python** faz todo o resto, sem a IA:
 ```
 HAR ──prepare──> catálogo ──(IA)──> plan.json ──build──> .jmx + massa.csv + relatório
 ```
+
+Os detalhes, com diagramas e uma execução real passo a passo, estão em
+**[docs/ARQUITETURA.md](docs/ARQUITETURA.md)**.
 
 ### Comandos
 | Comando | O que faz |

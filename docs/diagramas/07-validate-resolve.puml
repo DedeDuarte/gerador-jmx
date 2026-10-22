@@ -1,0 +1,69 @@
+@startuml 07-validate-resolve
+!include _estilo.iuml
+title validate + resolve: do plan.json à sequência final
+
+start
+partition "plan.validate" {
+  :Plan.model_validate (pydantic, extra=forbid);
+  if (schema ok?) then (não)
+    #FDECEA:ERRO por campo;
+    stop
+  endif
+  :cada ID: aparece duas vezes? está no catálogo?
+  (excluído → dica ~--host ou ~--include-static);
+  if (algum erro?) then (sim)
+    #FDECEA:ERRO → Build cancelado;
+    stop
+  endif
+  :aviso se a ordem do plano difere da ordem do HAR;
+}
+
+partition "correlations.resolve" {
+  :etapas = [EtapaFinal(nome, [Passo(id)])];
+  :_add_login: se nenhum passo é login e o HAR tem um
+  POST com senha antes do último passo → etapa "Login";
+  while (há um passo na posição i da sequência?) is (sim)
+    :e = Entry do passo;
+    while (para cada (local, valor) de request_fields(e):\npath.N, query.k, header.k, form.k, body.$.json) is (próximo)
+      if (valor já virou variável?) then (sim)
+      elseif (_is_input: login, senha, e-mail,\nCPF, CEP, cupom, telefone?) then (sim)
+        #FFF6D5:Variavel csv → massa.csv;
+      else (valor dinâmico)
+        :_usage_values: o valor inteiro e, em headers,
+        cada pedaço (o token do "Bearer xyz"),
+        só os is_strong (IDs, tokens, hashes);
+        if (alguma resposta **anterior na sequência**\ncontém o valor? (a mais próxima)) then (sim)
+          #E6F4EA:Variavel extractor
+          (JSON path, ou regex no body/headers);
+        elseif (alguma resposta do HAR **fora da sequência**,\nantes de e, contém?) then (sim)
+          #E6F4EA:Variavel extractor;
+          #EDE7F6:insere Passo "Obter <Variável>" antes de e
+          motivo: "origem de X (usado em #e)";
+        elseif (é o buildId de /_next/data/<buildId>/?) then (sim)
+          :Variavel global + aviso;
+        else (não)
+          #FDECEA:Fixo: "sem origem no HAR"
+          ou "a origem #N vem depois";
+        endif
+      endif
+    endwhile (fim dos campos)
+    if (inseriu dependência?) then (sim)
+      :i não avança: a dependência
+      é processada agora e e volta depois;
+    else (não)
+      :i = i + 1;
+    endif
+  endwhile (fim)
+  :Resolucao(etapas, variaveis, fixos, avisos);
+}
+:Resultado.report: OK, automáticas, correlações, CSV, riscos;
+stop
+
+note right
+  **origem(eid, valor)** só aceita a resposta
+  se ela contém o valor (cru, HTML-escaped
+  ou com "\/") e a própria requisição não o
+  enviou (eco não conta). Prefere JSON path;
+  senão monta um regex com contexto curto.
+end note
+@enduml

@@ -1,0 +1,42 @@
+@startuml 02-modulos
+!include _estilo.iuml
+title Estrutura do código: src/harjmx (setas = import)
+
+component "~__main__.py" as main
+component "commands.py\n--\nCLI: prepare | show | match | validate | build\nWorkspace, Session (pasta jornadas/<proj>)" as commands
+
+package "ETAPA 1 — ler o HAR e montar o catálogo" {
+  component "har_reader.py\n--\nload → Entry (ID = posição no HAR)\nsplit / exclusion_reason (filtros)\nmatch ('POST /login' → IDs)" as har_reader
+  component "catalog.py\n--\nactions (agrupa em ações)\nprincipal (★), alertas\nbuild → catalog.md / .json" as catalog
+}
+
+package "ETAPA 2 — o plano" {
+  component "plan.py\n--\nPlan / Etapa (pydantic)\nvalidate → Resultado\nResultado.report" as plan
+}
+
+package "ETAPA 3 — resolver e gerar" {
+  component "correlations.py\n--\nresolve → Resolucao\ncorrelações, dependências,\nlogin, CSV, valores fixos" as correlations
+  component "jmx_builder.py\n--\nhydrate → nomes → arrange → XML\nbuild → BuildResult" as builder
+  folder "jmx_templates/*.xml\n(um por elemento JMeter, Jinja2)" as templates
+}
+
+component "jsonpath.py\n--\nflatten, find, as_text" as jsonpath
+folder "config/\ndefaults.yaml, denylist.txt" as config
+
+main --> commands
+commands --> har_reader
+commands --> catalog
+commands --> plan
+commands --> builder
+commands ..> config : lê
+
+catalog --> har_reader : Entry
+plan --> correlations : resolve()
+plan --> har_reader : Entry
+correlations --> har_reader : Entry, path_segments
+correlations --> jsonpath
+har_reader --> jsonpath
+builder --> correlations : Resolucao, Variavel,\nExtractor
+builder --> har_reader : Entry
+builder ..> templates : render()
+@enduml
