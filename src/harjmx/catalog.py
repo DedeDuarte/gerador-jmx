@@ -3,7 +3,8 @@
 Gera o catalog.md (o que a IA lê para escolher as requisições de cada passo) e o catalog.json.
 As requisições mantidas aparecem agrupadas em **ações** do usuário: um bloco novo começa numa
 pausa de mais de `PAUSA_ACAO` segundos ou quando muda a página (Referer). Repetições e
-telemetria são colapsadas. Nunca inclui valores, só estrutura e nomes de chaves.
+telemetria são colapsadas e a provável requisição principal de cada ação ganha um ★.
+Nunca inclui valores, só estrutura e nomes de chaves.
 """
 from __future__ import annotations
 
@@ -17,6 +18,8 @@ from harjmx.har_reader import Entry
 PAUSA_ACAO = 1.5
 _TELEMETRY = re.compile(r"collect|datalayer|analytics|track|beacon|pixel|metric|/log(ging)?\b|gtm|telemetry"
                         r"|clarity|hotjar|newrelic|sentry|facebook|conversion|criteo|tiktok|pinterest", re.I)
+_ACTION_VERB = re.compile(r"add|claim|apply|new|create|move|login|logout|save|remove|delete|update|insert"
+                          r"|cadastr|adicion|remov|confirm|checkout|pay|submit", re.I)
 _ANTIBOT = re.compile(r"shieldsquare|radware|akamai|_abck|bm_sz|cf-ray|cf-mitigated|incap|perimeterx|x-px"
                       r"|datadome|kasada|imperva", re.I)
 
@@ -108,9 +111,25 @@ def alertas(entries: list[Entry]) -> list[str]:
     antibot = any(_ANTIBOT.search(f"{k}: {v}") for e in entries for k, v in e.response.headers)
     sem_cookies = not any(e.cookies or e.header("cookie") for e in entries)
     if antibot and sem_cookies:
-        out.append("o site tem anti-bot e o HAR veio sem cookies: o teste deve tomar bloqueio (302/403); "
-                   "grave de novo com cookies")
+        out.append("o site tem anti-bot e o HAR veio sem cookies: o script é gerado, mas deve tomar bloqueio "
+                   "(302/403) ao rodar; para corrigir, grave o HAR de novo com cookies (har-com-cookies.md)")
     return out
+
+
+def principal(acao: list[Entry], destino: str | None) -> int | None:
+    """Provável requisição principal da ação (só uma dica para a IA): o 1º POST/PUT/DELETE com verbo
+    de ação no path; senão, a que traz a página de destino; senão, a de maior resposta 2xx."""
+    cands = [e for e in acao if not _TELEMETRY.search(e.path) and 200 <= e.response.status < 300]
+    acao_ids = [e.id for e in cands if e.method != "GET" and _ACTION_VERB.search(e.path)]
+    if acao_ids:
+        return acao_ids[0]
+    alvo = destino.rstrip("/") if destino and destino not in ("/", "?") else None
+    nav = [e.id for e in cands if alvo and alvo in e.path]
+    if nav:
+        return nav[-1]
+    if not cands:
+        return None
+    return max(cands, key=lambda e: (len(e.response.text or ""), -e.id)).id
 
 
 def build(entries: list[Entry], all_entries: list[Entry], excluded: dict[int, str], main_host: str,
@@ -124,7 +143,7 @@ def build(entries: list[Entry], all_entries: list[Entry], excluded: dict[int, st
     t0 = next((e.started for e in entries if e.started is not None), None)
 
     first_seen: dict[tuple, int] = {}
-    md =[f"# Catálogo: {har_name}", "",
+    md = [f"# Catálogo: {har_name}", "",
           f"Host principal: {main_host}. Mantidas {len(entries)} de {len(all_entries)} (excluídas: "
           + (", ".join(f"{r} {n}" for r, n in reasons.most_common()) or "nenhuma") + ")."]
     md += [f"**ATENÇÃO:** {a}." for a in alertas(entries)]
@@ -133,13 +152,18 @@ def build(entries: list[Entry], all_entries: list[Entry], excluded: dict[int, st
         md.append("Terceiros excluídos (se for da aplicação, rode o prepare com `--host <dominio>`): "
                   + ", ".join(f"{h} ({n})" for h, n in third_party.most_common(10)))
     md += ["", "## Ações",
-           f"Cada bloco é uma ação do usuário (pausa > {PAUSA_ACAO} s ou troca de página). "
-           "Linha: #id MÉTODO status [host] path?chaves → resposta | req: corpo enviado.", ""]
+           f"Cada bloco é uma ação do usuário (pausa > {PAUSA_ACAO} s ou troca de página); `→` indica a "
+           "página para onde a ação leva. Linha: #id MÉTODO status [host] path?chaves → resposta | "
+           "req: corpo enviado. ★ = provável principal da ação (dica).", ""]
 
     items = []
-    for n, acao in enumerate(actions(entries), start=1):
+    acoes = actions(entries)
+    paginas = [_page(a[0]) for a in acoes]
+    for n, acao in enumerate(acoes, start=1):
         t = f" +{acao[0].started - t0:.1f}s" if t0 is not None and acao[0].started is not None else ""
-        md.append(f"### A{n}{t} — página {_page(acao[0])}")
+        proxima = paginas[n] if n < len(acoes) and paginas[n] not in (paginas[n - 1], "?") else None
+        md.append(f"### A{n}{t} — página {paginas[n - 1]}" + (f" → {proxima}" if proxima else ""))
+        estrela = principal(acao, proxima)
         telemetria = []
         na_acao: dict[tuple, list[int]] = {}
         for e in acao:
@@ -157,7 +181,7 @@ def build(entries: list[Entry], all_entries: list[Entry], excluded: dict[int, st
                 continue
             query = "?" + "&".join(dict.fromkeys(k for k, _ in e.query)) if e.query else ""
             host = f" [{alias[e.host]}]" if alias[e.host] != "h1" else ""
-            line = f"#{e.id} {e.method} {e.response.status}{host} {e.path}{query}"
+            line = ("★ " if e.id == estrela else "") + f"#{e.id} {e.method} {e.response.status}{host} {e.path}{query}"
             if anterior != e.id:
                 line += f" (repete #{anterior})"
             elif 300 <= e.response.status < 400:
@@ -172,6 +196,7 @@ def build(entries: list[Entry], all_entries: list[Entry], excluded: dict[int, st
         if telemetria:
             md.append("telemetria: " + ", ".join(f"#{i}" for i in telemetria))
         md.append("")
+    md.append(f"Fim do catálogo: {len(acoes)} ações, {len(entries)} requisições.")
 
     data = {"har": har_name, "main_host": main_host, "hosts": alias, "entries": items,
             "alertas": alertas(entries), "excluded": dict(reasons), "third_party_hosts": dict(third_party)}

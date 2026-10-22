@@ -53,6 +53,12 @@ def test_build_refuses_invalid_plan(mini_work):
     assert not (mini_work / "x.jmx").exists()
 
 
+def test_prepare_does_not_overwrite_a_script(mini_work):
+    assert main(["build", str(mini_work)]) == 0
+    assert main(["prepare", str(FIXTURES / "mini_login.har"), "--out", str(mini_work)]) == 1
+    assert main(["prepare", str(FIXTURES / "mini_login.har"), "--out", str(mini_work), "--force"]) == 0
+
+
 def test_destino_com_til_vai_para_a_home(tmp_path, monkeypatch):
     for var in ("HOME", "USERPROFILE"):
         monkeypatch.setenv(var, str(tmp_path))

@@ -23,19 +23,25 @@ peça ao usuário para instalar o Agente_JMeter (`python -m pip install -e <past
 - **Destino** (opcional): último argumento, depois da jornada entre aspas. Relativo à pasta atual
   (`./saida`), absoluto (`C:\jmeter`) ou com `~` (`~/jmeter`). Se não vier, use `jornadas` sem
   perguntar. Só pergunte se não der para separar jornada e destino.
-- **Projeto**: snake_case derivado do nome do HAR; se o nome for genérico (`teste`, `gravacao`),
-  use site + jornada (`renner_sacola_checkout`). Nunca `hars`.
-- **`<pasta>`** = `<destino>/<proj>`. Se já tiver um script, pergunte se pode sobrescrever.
+- **Projeto**: decida **antes** do prepare. snake_case do nome do HAR; se o nome for genérico
+  (`teste`, `gravacao`), derive da jornada (`jaqueta_camiseta_checkout`). Nunca `hars`. Não rode o
+  prepare em pasta provisória nem apague pastas.
+- **`<pasta>`** = `<destino>/<proj>`.
 
 ## 1. Preparar
 ```
 python -m harjmx prepare "<har>" --out "<pasta>" [--match "POST /login" ...]
 ```
-A saída **é o catálogo**: requisições agrupadas em ações do usuário (`### A7 +30.8s — página /p/...`),
-com horário e página. Não abra o arquivo de novo. Passe cada endpoint explícito do usuário em `--match`.
-Se um passo depende de API/SSO de outro domínio (listado em "Terceiros excluídos"), rode de novo com `--host <dominio>`.
+A saída **é o catálogo**: requisições agrupadas em ações do usuário
+(`### A12 +60.1s — página /p/... → /c/camisetas`), com horário, página e, quando a ação leva a outra
+página, o destino (`→`). Leia a saída inteira (sem `head`): ela termina em `Fim do catálogo: N ações`.
+Não abra o arquivo de novo. Passe cada endpoint explícito do usuário em `--match`.
+- Se o prepare disser que a pasta **já tem um script**, pergunte ao usuário se pode sobrescrever:
+  com o ok, rode de novo com `--force`; senão, use outro nome.
+- Se um passo depende de API/SSO de outro domínio (em "Terceiros excluídos"), rode de novo com `--host <dominio>`.
+- Os `ATENÇÃO` do topo não interrompem o fluxo: gere o script e repasse o aviso no fim.
 
-## 2. Escrever `<pasta>/_geracao/plan.json`
+## 2. Escrever `<pasta>/_geracao/plan.json` (com a ferramenta Write)
 ```json
 {"nome_teste": "renner_sacola_checkout",
  "etapas": [{"nome": "Ver Jaquetas", "requisicoes": [50]},
@@ -43,14 +49,20 @@ Se um passo depende de API/SSO de outro domínio (listado em "Terceiros excluíd
 ```
 Só esses campos. Regras:
 - **Uma etapa por passo pedido, exatamente na ordem pedida.** Nome = o passo do usuário, verbo no
-  infinitivo, sem abreviação ("Ver Preço Total", "Adicionar Cupom").
-- **Uma requisição por etapa**, a principal:
+  infinitivo, sem abreviação ("Ver Preço Total", "Adicionar Cupom"). Passo repetido: mesmo nome, com o
+  contexto entre parênteses quando ele mudou ("Ver Preço Total (com Cupom)").
+- **Uma requisição por etapa**, a principal. O `★` do catálogo marca a provável principal de cada
+  ação: comece por ela e confirme com o passo.
   - passo de ação ("adicionar", "aplicar", "cadastrar"): o POST/PUT/DELETE que faz a ação
     (`addItemToOrder`, `claimCoupon`, `newAddress`);
-  - passo de navegação ("ver", "abrir", "ir para"): a requisição que traz o conteúdo da tela
-    (listagem, dados do produto, itens da sacola).
-  Use a ação do catálogo cuja página e horário batem com o passo. Se o mesmo endpoint aparece
-  mais de uma vez (`repete #38`), escolha a ocorrência do momento certo, não um prefetch anterior.
+  - passo de navegação ("ver", "abrir"): a requisição que traz o conteúdo da tela (listagem, dados
+    do produto, itens da sacola). A navegação costuma estar na ação **anterior** à página, a que tem
+    `→ <página>` no cabeçalho;
+  - "ir para X" disparado por um POST (ex.: mover para o checkout): o POST;
+  - tela montada por vários fragmentos (JSP/HTML): o fragmento com o conteúdo do passo (os itens,
+    o total). Se o passo pede duas coisas da mesma tela (itens **e** total), até 2 IDs na etapa.
+  Se o mesmo endpoint aparece mais de uma vez (`repete #38`), escolha a ocorrência do momento certo,
+  não um prefetch anterior.
 - **Não inclua** chamadas acessórias da tela (contadores, frete, parcelamento, estoque,
   recomendações, telemetria) nem passos não pedidos. O Python adiciona sozinho o que for
   necessário (origem de valores dinâmicos, login) e mostra no relatório.

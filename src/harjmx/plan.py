@@ -78,7 +78,7 @@ class Resultado:
             lines.append("Correlações:")
             lines += [f"  {v.nome} ← #{v.origem_har_id} {v.extractor.tipo} `{_short(v.extractor.expressao)}`"
                       for v in corr]
-        riscos = list(self.avisos)
+        riscos = list(self.avisos) + r.avisos
         riscos += [f"valor fixo em #{f.har_id} {f.local} ({f.motivo})" for f in r.fixos[:10]]
         if len(r.fixos) > 10:
             riscos.append(f"... e mais {len(r.fixos) - 10} valores fixos")

@@ -73,6 +73,10 @@ class Workspace:
 
 def cmd_prepare(args) -> int:
     ws = Workspace(args.out)
+    existente = next(ws.path.glob("*.jmx"), None) if ws.path.is_dir() else None
+    if existente and not args.force:
+        print(f"ERRO: {ws.path} já tem um script ({existente.name}). Use outro nome ou --force para sobrescrever.")
+        return 1
     ws.save_session(Session(har=str(Path(args.har).expanduser().resolve()), extra_domains=args.host or [],
                             include_static=args.include_static))
     all_entries, kept = ws.load()
@@ -233,6 +237,7 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--host", action="append", help="domínio extra da aplicação (repetível)")
     sp.add_argument("--include-static", action="store_true")
     sp.add_argument("--match", action="append", help="endpoint informado pelo usuário: 'POST /login'")
+    sp.add_argument("--force", action="store_true", help="sobrescreve uma pasta que já tem script")
     sp.set_defaults(func=cmd_prepare)
 
     sp = sub.add_parser("show", help="mostra requisição e resposta completas de um ou mais IDs")

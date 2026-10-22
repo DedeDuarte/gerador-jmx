@@ -58,6 +58,7 @@ def build(nome_teste: str, resolucao: Resolucao, by_id: dict[int, Entry], config
     cookies = _initial_cookies(ordered_entries) if config["cookies"]["pre_popular"] else []
 
     udv = [(name, host) for host, name in hosts.items()]
+    udv += [(v.nome, v.valor) for v in variaveis if v.tipo == "global"]
     csv_vars = [v for v in variaveis if v.tipo == "csv"]
 
     tg_children = []

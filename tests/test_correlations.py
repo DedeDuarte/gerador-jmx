@@ -68,6 +68,17 @@ def test_echo_is_not_origin(tmp_path):
     assert res.fixos[0].motivo == "sem origem no HAR"
 
 
+def test_next_build_id_becomes_global_variable(tmp_path):
+    kept = _har(tmp_path,
+                ("GET", "/_next/data/b1dXyzAbCdEfGhIjKl/c/jaquetas.json", None, {"itens": []}),
+                ("GET", "/_next/data/b1dXyzAbCdEfGhIjKl/c/camisetas.json", None, {"itens": []}))
+    res = correlations.resolve([("Ver Jaquetas", [1]), ("Ver Camisetas", [2])], kept)
+    build = [v for v in res.variaveis if v.nome == "buildId"]
+    assert len(build) == 1 and build[0].tipo == "global" and build[0].valor == "b1dXyzAbCdEfGhIjKl"
+    assert len(res.avisos) == 1 and "buildId do Next.js" in res.avisos[0]
+    assert res.fixos == []
+
+
 def test_is_strong():
     assert correlations.is_strong("-8978932749661934233")
     assert correlations.is_strong("tok_a1b2c3")

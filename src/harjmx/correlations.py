@@ -4,7 +4,8 @@ Para cada valor dinâmico que uma requisição da sequência envia, a origem é 
 próxima antes dela: primeiro dentro da própria sequência; se não houver, entre as requisições
 mantidas do HAR, e essa requisição entra na sequência como dependência. O login também entra
 sozinho quando há passos escolhidos depois dele. Valores digitados pelo usuário (login, senha,
-CEP, cupom...) viram massa de CSV; o que sobra sem origem fica fixo e é reportado.
+CEP, cupom...) viram massa de CSV; o que sobra sem origem fica fixo e é reportado. O buildId do
+Next.js (`/_next/data/<buildId>/...`) sem origem vira variável global, com aviso.
 
 `resolve(pedidas, kept)` → `Resolucao`.
 """
@@ -55,7 +56,7 @@ class Extractor:
 class Variavel:
     nome: str
     valor: str
-    tipo: str                                 # extractor | csv
+    tipo: str                                 # extractor | csv | global
     origem_har_id: int | None = None          # requisição cujo extractor define a variável
     extractor: Extractor | None = None
     primeiro_uso: int | None = None
@@ -91,6 +92,7 @@ class Resolucao:
     etapas: list[EtapaFinal]
     variaveis: list[Variavel]
     fixos: list[Fixo]
+    avisos: list[str] = field(default_factory=list)
 
     def sequencia(self) -> list[Passo]:
         return [p for et in self.etapas for p in et.passos]
@@ -141,6 +143,15 @@ def _usage_values(local: str, value: str) -> list[str]:
         # Segmento de path só é ID se tiver cara de ID (dígitos suficientes ou UUID), não de nome de rota.
         vals = [v for v in vals if _UUID.match(v) or sum(c.isdigit() for c in v) >= 3]
     return [v for v in vals if is_strong(v)]
+
+
+def _next_build_id(e: Entry) -> str | None:
+    """Local do buildId em `/_next/data/<buildId>/...` (Next.js), que muda a cada deploy."""
+    segs = path_segments(e)
+    for i in range(len(segs) - 2):
+        if segs[i] == "_next" and segs[i + 1] == "data":
+            return f"path.{i + 2}"
+    return None
 
 
 def _field_key(local: str) -> str:
@@ -337,6 +348,7 @@ def resolve(pedidas: list[tuple[str, list[int]]], kept: list[Entry]) -> Resoluca
     nomes = _Nomes()
     variaveis: dict[str, Variavel] = {}
     fixos: dict[str, Fixo] = {}
+    avisos: list[str] = []
 
     i = 0
     while True:
@@ -347,6 +359,7 @@ def resolve(pedidas: list[tuple[str, list[int]]], kept: list[Entry]) -> Resoluca
         e = resp.by_id[passo.har_id]
         na_seq = {p.har_id for _, p in seq}
         dependencia = None
+        build_local = _next_build_id(e)
         for local, raw in request_fields(e):
             if raw in variaveis:
                 continue
@@ -354,7 +367,8 @@ def resolve(pedidas: list[tuple[str, list[int]]], kept: list[Entry]) -> Resoluca
                 variaveis[raw] = Variavel(nomes.novo(_camel(_field_key(local))), raw, "csv", primeiro_uso=e.id)
                 continue
             pendentes: list[tuple[str, str]] = []
-            for value in _usage_values(local, raw):
+            valores = [raw] if local == build_local else _usage_values(local, raw)
+            for value in valores:
                 if value in variaveis:
                     pendentes.clear()                # um pedaço (ex.: token do 'Bearer') já resolve o campo
                     continue
@@ -365,6 +379,11 @@ def resolve(pedidas: list[tuple[str, list[int]]], kept: list[Entry]) -> Resoluca
                     origem = next(((eid, ex) for eid in fora if (ex := resp.origem(eid, value))), None)
                     if origem is not None:
                         dependencia = origem[0]
+                if origem is None and local == build_local:
+                    variaveis[value] = Variavel(nomes.novo("buildId"), value, "global", primeiro_uso=e.id)
+                    avisos.append("buildId do Next.js ficou fixo em User Defined Variables: atualize a cada "
+                                  "deploy do site (ou grave o HAR com o HTML para ele ser correlacionado)")
+                    continue
                 if origem is None:
                     adiante = [p.har_id for _, p in seq[i + 1:]] + [x for x in ids_har if x > e.id]
                     depois = next((x for x in adiante if resp.origem(x, value)), None)
@@ -389,4 +408,4 @@ def resolve(pedidas: list[tuple[str, list[int]]], kept: list[Entry]) -> Resoluca
         i += 1
 
     ordem = sorted(variaveis.values(), key=lambda v: v.tipo != "extractor")
-    return Resolucao(etapas, ordem, list(fixos.values()))
+    return Resolucao(etapas, ordem, list(fixos.values()), avisos)
